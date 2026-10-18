@@ -1,0 +1,17 @@
+/* My Characters: the de-authorize prompts, in the danger color. */
+
+.deauthorize-dialog {
+    border-color: var(--bad);
+    border-top: 4px solid var(--bad);
+}
+
+.deauthorize-warning {
+    margin: 0 0 12px;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--bad);
+    text-align: center;
+}
+
+.deauthorize-dialog .switch-row { margin: 12px 0 4px; }

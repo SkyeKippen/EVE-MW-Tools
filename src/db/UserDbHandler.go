@@ -17,6 +17,7 @@ type UserCharacter struct {
 	CharacterID   int64
 	CharacterName string
 	AddedAt       time.Time
+	Authorized    bool // has a saved token, so the hourly refresh reads it
 }
 
 // LinkCharacter links a character to a user after they sign in with it and
@@ -86,7 +87,10 @@ func ListUserCharacters(ctx context.Context, userID int64) ([]UserCharacter, err
 	}
 
 	rows, err := conn.Query(ctx,
-		`SELECT character_id, character_name, added_at FROM lifetime_indy.user_characters WHERE user_id = $1`,
+		`SELECT c.character_id, c.character_name, c.added_at, t.character_id IS NOT NULL
+		FROM lifetime_indy.user_characters c
+		LEFT JOIN lifetime_indy.esi_tokens t ON t.character_id = c.character_id
+		WHERE c.user_id = $1`,
 		userID)
 	if err != nil {
 		return nil, err
@@ -96,7 +100,7 @@ func ListUserCharacters(ctx context.Context, userID int64) ([]UserCharacter, err
 	characters := make([]UserCharacter, 0)
 	for rows.Next() {
 		var character UserCharacter
-		if err := rows.Scan(&character.CharacterID, &character.CharacterName, &character.AddedAt); err != nil {
+		if err := rows.Scan(&character.CharacterID, &character.CharacterName, &character.AddedAt, &character.Authorized); err != nil {
 			return nil, err
 		}
 		characters = append(characters, character)

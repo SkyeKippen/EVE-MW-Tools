@@ -129,6 +129,28 @@ func SetSessionCookie(w http.ResponseWriter, userID, characterID int64, characte
 	return nil
 }
 
+// SwitchSessionCharacter makes another of the user's characters the signed-in
+// one, e.g. after the current one is removed.
+func SwitchSessionCharacter(r *http.Request, characterID int64, characterName string) {
+	c, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return
+	}
+	id, ok := verifySessionCookie(c.Value)
+	if !ok {
+		return
+	}
+	// replace rather than edit the session, since requests may be reading it
+	store.mu.Lock()
+	if sess, ok := store.sessions[id]; ok {
+		switched := *sess
+		switched.CharacterID = characterID
+		switched.CharacterName = characterName
+		store.sessions[id] = &switched
+	}
+	store.mu.Unlock()
+}
+
 func ClearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookieName); err == nil {
 		if id, ok := verifySessionCookie(c.Value); ok {

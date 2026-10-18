@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 {{template "head"}}
+    <link rel="stylesheet" href="/static/characters.css">
 </head>
 <body>
 
@@ -17,7 +18,7 @@
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>Character</th><th>Character ID</th></tr>
+                <tr><th>Character</th><th>Character ID</th><th></th></tr>
             </thead>
             <tbody>
             {{range $i, $character := .Characters}}
@@ -25,17 +26,73 @@
                     <td>
                         <strong class="pilot">{{$character.CharacterName}}</strong>
                         {{if eq $i 0}}<span class="badge badge-main" title="The first character you signed in with">Main</span>{{end}}
+                        {{if not $character.Authorized}}<span class="badge" title="Nothing new is read for this character; its saved data is kept. Add it again to re-authorize it.">De-authorized</span>{{end}}
                         {{if eq $character.CharacterID $.CharacterID}}<span class="muted">(signed in)</span>{{end}}
                     </td>
                     <td>{{$character.CharacterID}}</td>
+                    <td class="row-action">
+                        <button class="btn btn-danger btn-sm" type="button"
+                                data-deauthorize="/characters/deauthorize" data-character-id="{{$character.CharacterID}}"
+                                data-target="{{$character.CharacterName}}">De-authorize</button>
+                    </td>
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="2">No characters are linked to your account.</td></tr>
+                <tr><td class="empty" colspan="3">No characters are linked to your account.</td></tr>
             {{end}}
             </tbody>
         </table>
     </div>
+
+    {{if .Characters}}
+    <div class="actions">
+        <button class="btn btn-danger" type="button" data-deauthorize="/characters/deauthorize-all"
+                data-target="ALL of your characters">De-authorize ALL characters</button>
+    </div>
+    {{end}}
 </main>
 
+{{/* Both prompts post one form. Only with both boxes ticked is data
+     deleted; otherwise the characters are only de-authorized. */}}
+<form id="deauthorize-form" method="post" hidden>
+    <input type="hidden" name="character-id">
+    <input type="hidden" name="delete-data">
+    <input type="hidden" name="confirm-delete">
+</form>
+
+<dialog class="modal deauthorize-dialog" id="deauthorize-confirm" aria-labelledby="deauthorize-confirm-title">
+    <h3 id="deauthorize-confirm-title">De-authorize <span data-target></span>?</h3>
+    <p>This revokes the app's access to EVE for <strong data-target></strong> and stops reading new data for it. Data already saved is kept, and you can add the character again any time.</p>
+    <div>
+        <input type="checkbox" id="deauthorize-delete-data" class="switch-input">
+        <label class="switch-row" for="deauthorize-delete-data">
+            <span class="switch"></span>
+            <span><strong>Delete this character's data</strong> <span class="muted">Wallets, assets, jobs, mining and net worth history, plus their corporation's data when no other signed-in character is in it</span></span>
+        </label>
+    </div>
+    <div class="actions">
+        <button class="btn btn-secondary" type="button" data-close-dialog>Cancel</button>
+        <button class="btn btn-danger" type="button" id="deauthorize-confirm-button">Confirm</button>
+    </div>
+</dialog>
+
+<dialog class="modal deauthorize-dialog" id="deauthorize-delete" aria-labelledby="deauthorize-delete-title">
+    <p class="deauthorize-warning">WARNING</p>
+    <h3 id="deauthorize-delete-title">De-authorize <span data-target></span> AND delete its data?</h3>
+    <p>Everything saved for <strong data-target></strong> will be deleted. ESI only keeps 30 to 90 days of history, so older data can't be fetched again.</p>
+    <div>
+        <input type="checkbox" id="deauthorize-confirm-delete" class="switch-input">
+        <label class="switch-row" for="deauthorize-confirm-delete">
+            <span class="switch"></span>
+            <span><strong>I understand the deletion of my data is irreversible</strong></span>
+        </label>
+    </div>
+    <p class="muted hint">Leave this unticked to only de-authorize, keeping the data.</p>
+    <div class="actions">
+        <button class="btn btn-secondary" type="button" data-close-dialog>Cancel</button>
+        <button class="btn btn-danger" type="button" id="deauthorize-delete-button">Confirm</button>
+    </div>
+</dialog>
+
+<script src="/static/characters.js"></script>
 </body>
 </html>

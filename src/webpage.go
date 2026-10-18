@@ -115,6 +115,8 @@ func main() {
 	http.HandleFunc("/{$}", renderBase)
 	http.HandleFunc("/characters", auth.RequireAuth(renderCharacters))
 	http.HandleFunc("/characters/add", auth.RequireAuth(renderAddAltCharacter))
+	http.HandleFunc("/characters/deauthorize", auth.RequireAuth(handleDeauthorizeCharacter))
+	http.HandleFunc("/characters/deauthorize-all", auth.RequireAuth(handleDeauthorizeAll))
 	http.HandleFunc("/mining", auth.RequireAuth(renderMining))
 	http.HandleFunc("/manufacturing", auth.RequireAuth(renderManufacturing))
 	http.HandleFunc("/stockpiles", auth.RequireAuth(renderStockpiles))
