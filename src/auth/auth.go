@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"LifetimeIndustryTracker/src/esi"
+	"MeadowWorksTools/src/esi"
 	"context"
 	"errors"
 	"log"

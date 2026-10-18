@@ -1,42 +1,113 @@
 package esi
 
-import "context"
-
-// Jita is where ore values are priced: The Forge region and the Jita IV -
-// Moon 4 - Caldari Navy Assembly Plant station.
-const (
-	TheForgeRegionId = 10000002
-	JitaStationId    = 60003760
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"sync"
 )
 
-// PLEX trades on EVE's global PLEX market, not in Jita, so its price comes
-// from that market's region.
-const (
-	PlexTypeId         = 44992
-	GlobalPlexRegionId = 19000001
-)
+// RegionOrder is one market order from a region's public order book.
+type RegionOrder struct {
+	OrderId      int64   `json:"order_id"`
+	TypeId       int64   `json:"type_id"`
+	LocationId   int64   `json:"location_id"`
+	IsBuyOrder   bool    `json:"is_buy_order"`
+	Price        float64 `json:"price"`
+	VolumeRemain int64   `json:"volume_remain"`
+}
 
-// GetJitaSellPrice returns the lowest sell order for the type at the Jita
-// 4-4 station, and false when nobody is selling it there. PLEX is priced
-// from the lowest sell order on the global PLEX market instead. No scope
-// needed.
-func (c *Client) GetJitaSellPrice(ctx context.Context, typeId int64) (float64, bool, error) {
-	region, station := int64(TheForgeRegionId), int64(JitaStationId)
-	if typeId == PlexTypeId {
-		region, station = GlobalPlexRegionId, 0
+// regionOrderWorkers is how many pages of a region's orders are fetched at
+// once. The Forge has a few hundred pages, which takes minutes one at a time.
+const regionOrderWorkers = 8
+
+// GetRegionSellOrders returns every sell order in the region. Orders move
+// between pages while they're fetched, so an order may show up twice; the
+// copies are dropped. No scope needed.
+func (c *Client) GetRegionSellOrders(ctx context.Context, regionId int64) ([]RegionOrder, error) {
+	pageUrl := func(page int) string {
+		return c.url("/markets/%d/orders?order_type=sell&page=%d", regionId, page)
 	}
-	orders, err := getPages[struct {
-		LocationId int64   `json:"location_id"`
-		Price      float64 `json:"price"`
-	}](ctx, c, c.url("/markets/%d/orders?order_type=sell&type_id=%d", region, typeId), "")
+
+	var first []RegionOrder
+	header, err := c.doWithRetry(ctx, "GET", pageUrl(1), "", nil, &first)
 	if err != nil {
-		return 0, false, err
+		return nil, err
 	}
-	lowest, found := 0.0, false
-	for _, order := range orders {
-		if (station == 0 || order.LocationId == station) && (!found || order.Price < lowest) {
-			lowest, found = order.Price, true
+	pages := 1
+	if totalPagesStr := header.Get("X-Pages"); totalPagesStr != "" {
+		if pages, err = strconv.Atoi(totalPagesStr); err != nil {
+			return nil, fmt.Errorf("invalid X-Pages header %q for region %d orders: %w", totalPagesStr, regionId, err)
 		}
 	}
-	return lowest, found, nil
+
+	results := make([][]RegionOrder, pages+1)
+	results[1] = first
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	next := make(chan int)
+	var wg sync.WaitGroup
+	var errOnce sync.Once
+	var firstErr error
+	for range min(regionOrderWorkers, pages-1) {
+		wg.Go(func() {
+			for page := range next {
+				var orders []RegionOrder
+				if _, err := c.doWithRetry(ctx, "GET", pageUrl(page), "", nil, &orders); err != nil {
+					errOnce.Do(func() { firstErr = err; cancel() })
+					continue
+				}
+				results[page] = orders
+			}
+		})
+	}
+feed:
+	for page := 2; page <= pages; page++ {
+		select {
+		case next <- page:
+		case <-ctx.Done():
+			break feed
+		}
+	}
+	close(next)
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	seen := map[int64]bool{}
+	var all []RegionOrder
+	for _, page := range results {
+		for _, order := range page {
+			if !order.IsBuyOrder && !seen[order.OrderId] {
+				seen[order.OrderId] = true
+				all = append(all, order)
+			}
+		}
+	}
+	return all, nil
+}
+
+// GetAveragePrices returns CCP's average traded price of each type, from
+// /markets/prices, keyed by type ID. Types with no average are left out. No
+// scope needed.
+func (c *Client) GetAveragePrices(ctx context.Context) (map[int64]float64, error) {
+	prices, err := get[[]struct {
+		TypeId       int64   `json:"type_id"`
+		AveragePrice float64 `json:"average_price"`
+	}](ctx, c, c.url("/markets/prices"), "")
+	if err != nil {
+		return nil, err
+	}
+	averages := make(map[int64]float64, len(prices))
+	for _, p := range prices {
+		if p.AveragePrice > 0 {
+			averages[p.TypeId] = p.AveragePrice
+		}
+	}
+	return averages, nil
 }

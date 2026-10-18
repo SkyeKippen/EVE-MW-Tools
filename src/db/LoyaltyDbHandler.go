@@ -1,7 +1,7 @@
 package db
 
 import (
-	"LifetimeIndustryTracker/src/esi"
+	"MeadowWorksTools/src/esi"
 	"context"
 	"time"
 

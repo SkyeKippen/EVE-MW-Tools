@@ -1,7 +1,7 @@
 package db
 
 import (
-	"LifetimeIndustryTracker/src/mining"
+	"MeadowWorksTools/src/mining"
 	"context"
 	"time"
 

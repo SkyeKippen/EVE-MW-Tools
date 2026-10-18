@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 {{template "head"}}
+    <link rel="stylesheet" href="/static/networth.css">
 </head>
 <body>
 
@@ -38,16 +39,29 @@
         </table>
     </div>
 
+    <section class="card">
+        <h3>Net worth over time</h3>
+        {{if .Points}}
+        <div class="networth-chart"><canvas id="networth-chart" aria-label="Net worth, liquid, assets and PLEX over time"></canvas></div>
+        {{else}}
+        <p class="muted">No snapshots yet. One is taken every hour, after your wallets and assets are saved.</p>
+        {{end}}
+        <p class="muted hint">Snapshots are taken hourly from the same saved wallets, assets and prices as Current net worth. A character or corporation that couldn't be read in some hour counts with its last snapshot.</p>
+    </section>
+
     <div class="page-head">
         <p class="muted"><strong>Earned and spent</strong> count every wallet entry saved
             {{- if .Since.IsZero}} (none yet){{else}} since {{.Since.Format "2 Jan 2006"}}{{end}}, as ESI only keeps 30 days.
             Assets are market sales and purchases of items and PLEX is PLEX bought or sold; liquid is everything else, such as bounties, contracts, taxes and fees.
             ISK moved between your own characters and corporations isn't counted.</p>
-        <p class="muted"><strong>Net worth</strong>: liquid is your wallets plus ISK held in buy orders. Assets are your items and sell orders at today's Jita sell price (blueprint copies count as nothing), and PLEX is the PLEX in your hangars at the global PLEX market price. ESI can't read the PLEX vault, so it isn't included.
+        <p class="muted"><strong>Net worth</strong>: liquid is your wallets plus ISK held in buy orders. Assets are your items and sell orders at the Jita 4-4 sell price, fetched daily after 11:30 UTC: the average of the cheapest 5% of units listed, capped at 3× CCP's average price. Blueprint originals are capped at their NPC price and blueprint copies count as nothing, and PLEX is the PLEX in your hangars at the global PLEX market price. ESI can't read the PLEX vault, so it isn't included.
             {{- if .Unpriced}} {{.Unpriced}} item types have no saved price yet and are left out.{{end}}</p>
     </div>
 </main>
 
+<script id="networth-points" type="application/json">{{.Points}}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="/static/networth.js"></script>
 </body>
 </html>
 

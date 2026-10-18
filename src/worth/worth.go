@@ -2,6 +2,8 @@
 // My Worth page.
 package worth
 
+import "time"
+
 // PlexTypeID is PLEX's type ID. PLEX is counted on its own, never as an
 // asset.
 const PlexTypeID = 44992
@@ -43,4 +45,43 @@ func ValueHoldings(quantities map[int64]int64, prices map[int64]float64) (assets
 		}
 	}
 	return assets, plex, unpriced
+}
+
+// Snapshot is what one character or corporation held at one time.
+type Snapshot struct {
+	OwnerID int64
+	TakenAt time.Time
+	Split
+}
+
+// Point is one time on the net worth graph, totalled across owners.
+type Point struct {
+	Time     time.Time `json:"time"`
+	Liquid   float64   `json:"liquid"`
+	Assets   float64   `json:"assets"`
+	Plex     float64   `json:"plex"`
+	NetWorth float64   `json:"netWorth"`
+}
+
+// Series totals snapshots (oldest first) into one point per time. An owner
+// with no snapshot at some time counts with their last one, so a refresh
+// that couldn't read them doesn't show as a drop in net worth.
+func Series(snapshots []Snapshot) []Point {
+	last := map[int64]Split{}
+	points := []Point{}
+	for i := 0; i < len(snapshots); {
+		takenAt := snapshots[i].TakenAt
+		for ; i < len(snapshots) && snapshots[i].TakenAt.Equal(takenAt); i++ {
+			last[snapshots[i].OwnerID] = snapshots[i].Split
+		}
+		p := Point{Time: takenAt}
+		for _, split := range last {
+			p.Liquid += split.Liquid
+			p.Assets += split.Assets
+			p.Plex += split.Plex
+		}
+		p.NetWorth = p.Liquid + p.Assets + p.Plex
+		points = append(points, p)
+	}
+	return points
 }

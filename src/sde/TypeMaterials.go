@@ -69,6 +69,8 @@ type sdeData struct {
 	portions   map[int64]int64  // type ID to units refined at a time
 	typeIDs    map[string]int64 // English name to type ID
 	onMarket   map[int64]bool   // types that can be bought and sold on the market
+	items      map[int64]*Item  // published types, for item search
+	sorted     []*Item          // items by lowercase name
 	blueprints map[int64]Blueprint
 	groups     map[int64]Group
 	categories map[int64]string
@@ -199,6 +201,7 @@ func load(ctx context.Context) error {
 	data.portions = make(map[int64]int64, len(types))
 	data.typeIDs = make(map[string]int64, len(types))
 	data.onMarket = make(map[int64]bool, len(types))
+	data.items = make(map[int64]*Item, len(types))
 	for typeID, info := range types {
 		if info.Volume != nil {
 			data.volumes[typeID] = *info.Volume
@@ -224,6 +227,7 @@ func load(ctx context.Context) error {
 		setLoaded(sdeData{}, err)
 		return err
 	}
+	data.indexItems(types)
 	log.Printf("sde: loaded %d types, refine materials for %d and %d blueprints",
 		len(types), len(data.materials), len(data.blueprints))
 	setLoaded(data, nil)
@@ -298,17 +302,19 @@ type TypeInfo struct {
 	Published   bool
 	// MarketGroupID is 0 for types that can't be traded on the market
 	MarketGroupID int64
+	BasePrice     float64 // what NPCs sell it for, where they do; 0 when the SDE gives none
 }
 
 // ParseTypes reads each type's name, volume, group and portion size from
 // the SDE's types.jsonl: one line per type, {"_key": typeID, "groupID": ...,
-// "marketGroupID": ..., "name": {"en": ...}, "portionSize": ...,
-// "published": ..., "volume": m3}.
+// "basePrice": ..., "marketGroupID": ..., "name": {"en": ...},
+// "portionSize": ..., "published": ..., "volume": m3}.
 func ParseTypes(r io.Reader) (map[int64]TypeInfo, error) {
 	loaded := map[int64]TypeInfo{}
 	err := eachLine(r, func(line []byte) error {
 		var entry struct {
 			Key           int64             `json:"_key"`
+			BasePrice     float64           `json:"basePrice"`
 			GroupID       int64             `json:"groupID"`
 			MarketGroupID int64             `json:"marketGroupID"`
 			Name          map[string]string `json:"name"`
@@ -320,7 +326,8 @@ func ParseTypes(r io.Reader) (map[int64]TypeInfo, error) {
 			return err
 		}
 		loaded[entry.Key] = TypeInfo{Name: entry.Name["en"], Volume: entry.Volume, GroupID: entry.GroupID,
-			PortionSize: entry.PortionSize, Published: entry.Published, MarketGroupID: entry.MarketGroupID}
+			PortionSize: entry.PortionSize, Published: entry.Published, MarketGroupID: entry.MarketGroupID,
+			BasePrice: entry.BasePrice}
 		return nil
 	})
 	if err == nil && len(loaded) == 0 {

@@ -14,6 +14,7 @@
     --good-hover: #166534;
     --pending: #a16207;
     --claimed: #c2410c;
+    --plex: #7c3aed;
     --switch-off: #4b5563;
     --bad: #b91c1c;
     --bad-soft: #fef2f2;
@@ -39,6 +40,7 @@
         --good-hover: #86efac;
         --pending: #facc15;
         --claimed: #fb923c;
+        --plex: #c084fc;
         --switch-off: #374151;
         --bad: #f87171;
         --bad-soft: #2a1515;
@@ -508,7 +510,7 @@ input[type="number"]:focus {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
-/* Item suggestions under the Create Order item field */
+/* Suggestions under an autocomplete field (see autocomplete.js) */
 .autocomplete { position: relative; }
 
 .autocomplete-list {
@@ -524,14 +526,30 @@ input[type="number"]:focus {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    max-height: 320px;
+    overflow-y: auto;
 }
 
 .autocomplete-list li {
     padding: 6px 10px;
     cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .autocomplete-list li.active { background: var(--ink-soft); }
+
+.autocomplete-list li.autocomplete-empty {
+    color: var(--muted);
+    cursor: default;
+}
+
+.autocomplete-detail {
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
 
 .sso-login {
     display: inline-block;
@@ -597,3 +615,46 @@ tfoot th {
 
 /* My Characters: the character signed in with first */
 .badge-main { color: var(--ink); }
+
+code {
+    font-size: 0.92em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--ink-soft);
+    color: var(--text);
+}
+
+/* Pop-up dialog holding a form */
+.modal {
+    width: min(520px, calc(100vw - 32px));
+    padding: 24px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--ink);
+    border-radius: var(--radius);
+}
+
+.modal::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+.modal h3 { margin-bottom: 12px; }
+
+.modal .actions { justify-content: flex-end; }
+
+.hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+}
+
+/* A message across the top of a page */
+.notice {
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--pending);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.notice-good { border-left-color: var(--good); }
+.notice-bad { border-left-color: var(--bad); }

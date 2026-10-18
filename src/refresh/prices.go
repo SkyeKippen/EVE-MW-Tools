@@ -1,14 +1,14 @@
 package refresh
 
 import (
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/mining"
-	"LifetimeIndustryTracker/src/sde"
-	"LifetimeIndustryTracker/src/worth"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/mining"
+	"MeadowWorksTools/src/prices"
+	"MeadowWorksTools/src/sde"
 	"context"
 	"fmt"
+	"log"
 	"slices"
-	"sync"
 	"time"
 )
 
@@ -50,93 +50,50 @@ func MaterialIDs(recipes map[int64]mining.Recipe) []int64 {
 	return ids
 }
 
-// types nobody sells in Jita get no saved price, so the day they were last
-// looked up is kept here to look them up only once a day too
-var (
-	unsoldMu  sync.Mutex
-	unsoldDay = map[int64]time.Time{}
+// Jita prices are fetched once a day, after downtime (11:00 to about 11:15
+// UTC), when the market has settled.
+const (
+	priceFetchHourUTC   = 11
+	priceFetchMinuteUTC = 30
 )
 
-// SaveJitaPrices saves today's Jita sell price of each type that has none
-// yet, so each is fetched from ESI at most once a day.
-func (r *Refresher) SaveJitaPrices(ctx context.Context, typeIDs []int64) error {
-	date := today()
-	priced, err := db.PricedOn(ctx, typeIDs, date)
-	if err != nil {
-		return err
+// PriceDay is the UTC day prices fetched at t are saved under. Before the
+// daily fetch time they belong to the day before, so a restart in the
+// morning doesn't fetch again before downtime.
+func PriceDay(t time.Time) time.Time {
+	t = t.UTC()
+	if t.Hour() < priceFetchHourUTC || t.Hour() == priceFetchHourUTC && t.Minute() < priceFetchMinuteUTC {
+		t = t.AddDate(0, 0, -1)
 	}
-	// prices are saved as they're fetched, so a long first run that times
-	// out or fails keeps what it got
-	prices := map[int64]float64{}
-	var fetchErr error
-	for _, typeID := range typeIDs {
-		if len(prices) >= 100 {
-			if err := db.SaveJitaSellPrices(ctx, date, prices); err != nil {
-				return err
-			}
-			clear(prices)
-		}
-		unsoldMu.Lock()
-		checked := unsoldDay[typeID].Equal(date)
-		unsoldMu.Unlock()
-		if priced[typeID] || checked {
-			continue
-		}
-		price, found, err := r.ESI.GetJitaSellPrice(ctx, typeID)
-		if err != nil {
-			fetchErr = fmt.Errorf("Jita sell price of %d: %w", typeID, err)
-			break
-		}
-		if found {
-			prices[typeID] = price
-		} else {
-			unsoldMu.Lock()
-			unsoldDay[typeID] = date
-			unsoldMu.Unlock()
-		}
-	}
-	if err := db.SaveJitaSellPrices(ctx, date, prices); err != nil {
-		return err
-	}
-	return fetchErr
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
-// saveDailyPrices saves today's Jita sell price of everything the pages
-// value: what any mined ore refines into and every item ever delivered.
+// saveDailyPrices saves the day's Jita sell price of every item on the
+// market, unless they're already saved. Blueprints are capped at their NPC
+// price, which needs the SDE, so it waits for the SDE to load.
 func (r *Refresher) saveDailyPrices(ctx context.Context) error {
-	oreTypes, err := db.LoadMinedOreTypes(ctx)
-	if err != nil {
+	day := PriceDay(time.Now())
+	latest, err := db.LatestPriceDay(ctx)
+	if err != nil || !latest.Before(day) {
 		return err
 	}
-	recipes, err := OreRecipes(oreTypes)
-	if err != nil {
-		return err
+	if _, err := sde.Materials(); err != nil {
+		return fmt.Errorf("waiting for the SDE to price blueprints: %w", err)
 	}
-	productIDs, err := db.LoadDeliveredProductIDs(ctx)
-	if err != nil {
-		return err
-	}
-	typeIDs := MaterialIDs(recipes)
-	for _, productID := range productIDs {
-		if !slices.Contains(typeIDs, productID) {
-			typeIDs = append(typeIDs, productID)
-		}
-	}
-	return r.SaveJitaPrices(ctx, typeIDs)
-}
 
-// saveHeldPrices saves today's Jita sell price of everything held in assets
-// and open sell orders that can be traded on the market, for My Worth.
-func (r *Refresher) saveHeldPrices(ctx context.Context) error {
-	held, err := db.LoadHeldTypeIDs(ctx)
+	start := time.Now()
+	list, err := prices.FetchJita(ctx, r.ESI)
 	if err != nil {
 		return err
 	}
-	typeIDs := []int64{worth.PlexTypeID}
-	for _, typeID := range held {
-		if typeID != worth.PlexTypeID && sde.OnMarket(typeID) {
-			typeIDs = append(typeIDs, typeID)
-		}
+	list = prices.CapBlueprints(list, func(typeId int64) (bool, float64) {
+		item, ok := sde.Get(typeId)
+		return ok && item.IsBlueprint, item.BasePrice
+	})
+	if err := db.SaveDailyJitaPrices(ctx, day, list); err != nil {
+		return fmt.Errorf("saving prices: %w", err)
 	}
-	return r.SaveJitaPrices(ctx, typeIDs)
+	log.Printf("refresh: saved Jita prices of %d types for %s in %s", len(list), day.Format(time.DateOnly),
+		time.Since(start).Round(time.Second))
+	return nil
 }

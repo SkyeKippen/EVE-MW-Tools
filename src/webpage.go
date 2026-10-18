@@ -1,11 +1,12 @@
 package main
 
 import (
-	"LifetimeIndustryTracker/src/auth"
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/esi"
-	"LifetimeIndustryTracker/src/sde"
+	"MeadowWorksTools/src/auth"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/esi"
+	"MeadowWorksTools/src/sde"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,21 +99,40 @@ func main() {
 	staticDir := filepath.Join(baseDir, "static")
 
 	fs := http.FileServer(http.Dir(staticDir))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	// no-cache makes the browser check for a newer file on every page load
+	// (a cheap 304 when it hasn't changed), so updated scripts and styles are
+	// picked up without a hard refresh
+	http.Handle("/static/", http.StripPrefix("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		fs.ServeHTTP(w, r)
+	})))
+	// browsers ask for /favicon.ico on pages that don't name an icon, like errors
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(staticDir, "favicon.png"))
+	})
+	http.HandleFunc("/image", handleImage)
 
 	http.HandleFunc("/{$}", renderBase)
 	http.HandleFunc("/characters", auth.RequireAuth(renderCharacters))
 	http.HandleFunc("/characters/add", auth.RequireAuth(renderAddAltCharacter))
 	http.HandleFunc("/mining", auth.RequireAuth(renderMining))
 	http.HandleFunc("/manufacturing", auth.RequireAuth(renderManufacturing))
+	http.HandleFunc("/stockpiles", auth.RequireAuth(renderStockpiles))
+	http.HandleFunc("/stockpiles/create", auth.RequireAuth(handleCreateStockpile))
+	http.HandleFunc("/stockpiles/delete", auth.RequireAuth(handleDeleteStockpile))
+	http.HandleFunc("/stockpiles/items/add", auth.RequireAuth(handleAddStockpileItem))
+	http.HandleFunc("/stockpiles/items/remove", auth.RequireAuth(handleRemoveStockpileItem))
+	http.HandleFunc("/stockpiles/counts", auth.RequireAuth(handleStockpileCounts))
+	http.HandleFunc("/stockpiles/item-suggestions", auth.RequireAuth(handleItemSuggestions))
+	http.HandleFunc("/stockpiles/structure-suggestions", auth.RequireAuth(handleStructureSuggestions))
 	http.HandleFunc("/worth", auth.RequireAuth(renderMyWorth))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
 
-	// the Mining page values ore by what it refines into, which only the
-	// SDE knows
+	// the Mining page values ore by what it refines into, and stockpiles
+	// search item names, which only the SDE knows
 	sde.LoadInBackground()
 
 	// ESI only remembers 30 to 90 days and caches most routes for an hour,
@@ -150,4 +171,55 @@ func renderBase(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("renderBase: %v", err)
 	}
+}
+
+// handleImage serves an image from the EVE image server through the local
+// cache, downloading it the first time.
+// ?category=types|characters|corporations|alliances&id=<ID>&variation=<v>&size=<px>
+// e.g. /image?category=types&id=34&variation=icon&size=64 for Tritanium.
+// variation defaults to the category's usual one and size to 64.
+func handleImage(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	category := q.Get("category")
+	id, err := strconv.ParseInt(q.Get("id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	variation := q.Get("variation")
+	if variation == "" {
+		variation = defaultImageVariation[category]
+	}
+	size := 64
+	if s := q.Get("size"); s != "" {
+		if size, err = strconv.Atoi(s); err != nil {
+			http.Error(w, "invalid size", http.StatusBadRequest)
+			return
+		}
+	}
+
+	path, err := esi.ImagePath(category, id, variation, size)
+	switch {
+	case errors.Is(err, esi.ErrInvalidImage):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.Is(err, esi.ErrImageNotFound):
+		http.NotFound(w, r)
+		return
+	case err != nil:
+		log.Printf("image %s %d: %v", category, id, err)
+		http.Error(w, "could not load image", http.StatusBadGateway)
+		return
+	}
+
+	// let the browser keep images for a day; the cache refetches portraits daily
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	http.ServeFile(w, r, path)
+}
+
+var defaultImageVariation = map[string]string{
+	"types":        "icon",
+	"characters":   "portrait",
+	"corporations": "logo",
+	"alliances":    "logo",
 }

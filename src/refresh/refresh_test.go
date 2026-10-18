@@ -1,8 +1,8 @@
 package refresh
 
 import (
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/esi"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/esi"
 	"context"
 	"fmt"
 	"net/http"
@@ -35,7 +35,8 @@ func TestRefreshSavesEverything(t *testing.T) {
 	_, err = conn.Exec(ctx, `TRUNCATE lifetime_indy.esi_tokens, lifetime_indy.character_wallet_journal,
 		lifetime_indy.corp_wallet_journal, lifetime_indy.wallet_balances, lifetime_indy.loyalty_points,
 		lifetime_indy.market_orders, lifetime_indy.assets, lifetime_indy.industry_jobs,
-		lifetime_indy.mining_ledger, lifetime_indy.corp_mining_ledger`)
+		lifetime_indy.mining_ledger, lifetime_indy.corp_mining_ledger, lifetime_indy.wallet_transactions,
+		lifetime_indy.blueprints, lifetime_indy.networth_snapshots, lifetime_indy.places CASCADE`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +60,14 @@ func TestRefreshSavesEverything(t *testing.T) {
 		"/corporation/98000001/mining/observers":               `[{"observer_id":1035000000001,"observer_type":"structure","last_updated":"2026-10-13"}]`,
 		"/corporation/98000001/mining/observers/1035000000001": `[{"character_id":8,"recorded_corporation_id":98000001,"type_id":45490,"quantity":2000,"last_updated":"2026-10-13"}]`,
 		"/universe/structures/1035000000001":                   `{"name":"Moon Drill","owner_id":98000001,"solar_system_id":30002187,"type_id":35835}`,
-		"/universe/names":                                      `[{"id":17470,"name":"Veldspar II-Grade"},{"id":45490,"name":"Zeolites III-Grade"},{"id":30000142,"name":"Jita"},{"id":30002187,"name":"Amarr"},{"id":8,"name":"Miner Alt"}]`,
+		"/characters/7/blueprints":                             `[{"item_id":3,"type_id":690,"location_id":60003760,"location_flag":"Hangar","quantity":-2,"runs":10,"material_efficiency":10,"time_efficiency":20}]`,
+		"/corporations/98000001/blueprints":                    "403",
+		"/universe/stations/60003760":                          `{"name":"Jita IV - Moon 4 - Caldari Navy Assembly Plant","system_id":30000142}`,
+		"/universe/systems/30000142":                           `{"name":"Jita","constellation_id":20000020}`,
+		"/universe/systems/30002187":                           `{"name":"Amarr","constellation_id":20000322}`,
+		"/universe/constellations/20000020":                    `{"name":"Kimotoro","region_id":10000002}`,
+		"/universe/constellations/20000322":                    `{"name":"Throne Worlds","region_id":10000043}`,
+		"/universe/names":                                      `[{"id":17470,"name":"Veldspar II-Grade"},{"id":45490,"name":"Zeolites III-Grade"},{"id":30000142,"name":"Jita"},{"id":30002187,"name":"Amarr"},{"id":8,"name":"Miner Alt"},{"id":98000001,"name":"Meadow Works"},{"id":10000002,"name":"The Forge"},{"id":10000043,"name":"Domain"}]`,
 	}
 	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, ok := routes[r.URL.Path]
@@ -78,7 +86,7 @@ func TestRefreshSavesEverything(t *testing.T) {
 
 	scopes := []string{ScopeCharacterWallet, ScopeCharacterAssets, ScopeCharacterJobs, ScopeCharacterMining,
 		ScopeCharacterOrders, ScopeLoyalty, ScopeCorporationWallet, ScopeCorporationAssets, ScopeCorporationJobs,
-		ScopeCorporationMining, ScopeCorporationOrders, ScopeStructures}
+		ScopeCorporationMining, ScopeCorporationOrders, ScopeStructures, ScopeCharacterBPs, ScopeCorporationBPs}
 	err = db.SaveCharacterToken(ctx, esi.CharacterToken{CharacterID: 7, CharacterName: "Skye", Scopes: scopes,
 		AccessToken: "access", RefreshToken: "refresh", ExpiresAt: time.Now().Add(time.Hour)})
 	if err != nil {
@@ -92,6 +100,7 @@ func TestRefreshSavesEverything(t *testing.T) {
 	counts := map[string]int{
 		"character_wallet_journal": 1, "corp_wallet_journal": 1, "wallet_balances": 3, "loyalty_points": 1,
 		"market_orders": 2, "assets": 2, "industry_jobs": 2, "mining_ledger": 1, "corp_mining_ledger": 1,
+		"blueprints": 1, "places": 2, "networth_snapshots": 2,
 	}
 	for table, want := range counts {
 		var got int
@@ -112,6 +121,23 @@ func TestRefreshSavesEverything(t *testing.T) {
 	conn.QueryRow(ctx, `SELECT observer_name, solar_system_name, character_name, base_ore FROM lifetime_indy.corp_mining_ledger`).Scan(&observer, &system, &miner, &baseOre)
 	if observer != "Moon Drill" || system != "Amarr" || miner != "Miner Alt" || baseOre != "Zeolites" {
 		t.Errorf("corp mining %q %q %q %q", observer, system, miner, baseOre)
+	}
+	var stationName, structureRegion string
+	conn.QueryRow(ctx, `SELECT name FROM lifetime_indy.places WHERE location_id = 60003760`).Scan(&stationName)
+	conn.QueryRow(ctx, `SELECT region FROM lifetime_indy.places WHERE location_id = 1035000000001`).Scan(&structureRegion)
+	if stationName != "Jita IV - Moon 4 - Caldari Navy Assembly Plant" || structureRegion != "Domain" {
+		t.Errorf("places %q, %q", stationName, structureRegion)
+	}
+	var assetPlace, blueprintPlace int64
+	conn.QueryRow(ctx, `SELECT place_id FROM lifetime_indy.assets WHERE item_id = 1`).Scan(&assetPlace)
+	conn.QueryRow(ctx, `SELECT place_id FROM lifetime_indy.blueprints WHERE item_id = 3`).Scan(&blueprintPlace)
+	if assetPlace != 60003760 || blueprintPlace != 60003760 {
+		t.Errorf("asset at %d, blueprint at %d", assetPlace, blueprintPlace)
+	}
+	var liquid float64
+	conn.QueryRow(ctx, `SELECT liquid FROM lifetime_indy.networth_snapshots WHERE owner_id = 7`).Scan(&liquid)
+	if liquid < 336717024 {
+		t.Errorf("character snapshot liquid %v", liquid)
 	}
 	var encrypted []byte
 	conn.QueryRow(ctx, `SELECT access_token FROM lifetime_indy.esi_tokens WHERE character_id = 7`).Scan(&encrypted)

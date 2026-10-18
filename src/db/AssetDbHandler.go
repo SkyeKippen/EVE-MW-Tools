@@ -1,7 +1,8 @@
 package db
 
 import (
-	"LifetimeIndustryTracker/src/esi"
+	"MeadowWorksTools/src/esi"
+	"MeadowWorksTools/src/places"
 	"context"
 
 	"github.com/jackc/pgx/v5"
@@ -25,6 +26,9 @@ func ReplaceAssets(ctx context.Context, ownerID int64, ownerType string, assets 
 		return err
 	}
 
+	// each item's station or structure, so pages can count what's at a place
+	itemPlaces := places.Of(assets)
+
 	// ESI can list the same item twice when it moves between pages being read
 	seen := make(map[int64]bool, len(assets))
 	rows := make([][]any, 0, len(assets))
@@ -34,11 +38,12 @@ func ReplaceAssets(ctx context.Context, ownerID int64, ownerType string, assets 
 		}
 		seen[asset.ItemId] = true
 		rows = append(rows, []any{ownerID, ownerType, asset.ItemId, asset.TypeId, asset.Quantity, asset.LocationId,
-			asset.LocationFlag, asset.LocationType, asset.IsSingleton, asset.IsBlueprintCopy})
+			asset.LocationFlag, asset.LocationType, asset.IsSingleton, asset.IsBlueprintCopy,
+			nullIfZero(itemPlaces[asset.ItemId])})
 	}
 	_, err = tx.CopyFrom(ctx, pgx.Identifier{"lifetime_indy", "assets"},
 		[]string{"owner_id", "owner_type", "item_id", "type_id", "quantity", "location_id",
-			"location_flag", "location_type", "is_singleton", "is_blueprint_copy"},
+			"location_flag", "location_type", "is_singleton", "is_blueprint_copy", "place_id"},
 		pgx.CopyFromRows(rows))
 	if err != nil {
 		return err

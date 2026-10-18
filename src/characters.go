@@ -1,8 +1,8 @@
 package main
 
 import (
-	"LifetimeIndustryTracker/src/auth"
-	"LifetimeIndustryTracker/src/db"
+	"MeadowWorksTools/src/auth"
+	"MeadowWorksTools/src/db"
 	"log"
 	"net/http"
 )

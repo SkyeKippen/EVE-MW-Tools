@@ -1,9 +1,9 @@
 package refresh
 
 import (
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/esi"
-	"LifetimeIndustryTracker/src/mining"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/esi"
+	"MeadowWorksTools/src/mining"
 	"context"
 	"errors"
 	"fmt"

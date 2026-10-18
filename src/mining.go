@@ -1,12 +1,12 @@
 package main
 
 import (
-	"LifetimeIndustryTracker/src/auth"
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/esi"
-	"LifetimeIndustryTracker/src/mining"
-	"LifetimeIndustryTracker/src/refresh"
-	"LifetimeIndustryTracker/src/sde"
+	"MeadowWorksTools/src/auth"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/esi"
+	"MeadowWorksTools/src/mining"
+	"MeadowWorksTools/src/refresh"
+	"MeadowWorksTools/src/sde"
 	"context"
 	"errors"
 	"log"

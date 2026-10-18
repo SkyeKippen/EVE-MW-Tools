@@ -1,10 +1,10 @@
 package main
 
 import (
-	"LifetimeIndustryTracker/src/auth"
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/production"
-	"LifetimeIndustryTracker/src/sde"
+	"MeadowWorksTools/src/auth"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/production"
+	"MeadowWorksTools/src/sde"
 	"context"
 	"log"
 	"net/http"

@@ -1,4 +1,4 @@
-module LifetimeIndustryTracker
+module MeadowWorksTools
 
 go 1.27
 

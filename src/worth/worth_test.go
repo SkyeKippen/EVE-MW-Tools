@@ -1,6 +1,9 @@
 package worth
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestSplit(t *testing.T) {
 	s := Split{Liquid: 50, Assets: 30, Plex: 20}
@@ -18,5 +21,28 @@ func TestValueHoldings(t *testing.T) {
 	assets, plex, unpriced := ValueHoldings(quantities, prices)
 	if assets != 4500 || plex != 50_000_000 || unpriced != 1 {
 		t.Errorf("got assets %v, plex %v, unpriced %d", assets, plex, unpriced)
+	}
+}
+
+func TestSeriesCarriesForwardMissingSnapshots(t *testing.T) {
+	h0 := time.Date(2026, 10, 10, 8, 0, 0, 0, time.UTC)
+	h1 := h0.Add(time.Hour)
+	points := Series([]Snapshot{
+		{OwnerID: 1, TakenAt: h0, Split: Split{Liquid: 10, Assets: 100}},
+		{OwnerID: 2, TakenAt: h0, Split: Split{Liquid: 50, Assets: 1000, Plex: 5}},
+		{OwnerID: 1, TakenAt: h1, Split: Split{Liquid: 20, Assets: 120}},
+		// owner 2 couldn't be read at h1
+	})
+	want := []Point{
+		{Time: h0, Liquid: 60, Assets: 1100, Plex: 5, NetWorth: 1165},
+		{Time: h1, Liquid: 70, Assets: 1120, Plex: 5, NetWorth: 1195},
+	}
+	if len(points) != len(want) {
+		t.Fatalf("got %d points, want %d", len(points), len(want))
+	}
+	for i := range want {
+		if points[i] != want[i] {
+			t.Errorf("point %d = %+v, want %+v", i, points[i], want[i])
+		}
 	}
 }

@@ -4,8 +4,8 @@
 package refresh
 
 import (
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/esi"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/esi"
 	"context"
 	"errors"
 	"fmt"
@@ -17,12 +17,14 @@ import (
 const (
 	ScopeCharacterWallet   = "esi-wallet.read_character_wallet.v1"
 	ScopeCharacterAssets   = "esi-assets.read_assets.v1"
+	ScopeCharacterBPs      = "esi-characters.read_blueprints.v1"
 	ScopeCharacterJobs     = "esi-industry.read_character_jobs.v1"
 	ScopeCharacterMining   = "esi-industry.read_character_mining.v1"
 	ScopeCharacterOrders   = "esi-markets.read_character_orders.v1"
 	ScopeLoyalty           = "esi-characters.read_loyalty.v1"
 	ScopeCorporationWallet = "esi-wallet.read_corporation_wallets.v1"
 	ScopeCorporationAssets = "esi-assets.read_corporation_assets.v1"
+	ScopeCorporationBPs    = "esi-corporations.read_blueprints.v1"
 	ScopeCorporationJobs   = "esi-industry.read_corporation_jobs.v1"
 	ScopeCorporationMining = "esi-industry.read_corporation_mining.v1"
 	ScopeCorporationOrders = "esi-markets.read_corporation_orders.v1"
@@ -55,9 +57,10 @@ func (r *Refresher) Every(interval time.Duration) {
 }
 
 // All refreshes every character with a saved token, then each of their
-// corporations once, then records newly delivered manufacturing and
-// reaction jobs, saves today's Jita prices (once a day), values the
-// deliveries, then saves today's prices of everything held in assets.
+// corporations once, then looks up the stations and structures they have
+// things at, records newly delivered manufacturing and reaction jobs, saves
+// the day's Jita prices (once a day), values the deliveries and takes the
+// hour's net worth snapshots.
 func (r *Refresher) All(ctx context.Context) {
 	characters, err := db.ListTokenCharacters(ctx)
 	if err != nil {
@@ -66,6 +69,7 @@ func (r *Refresher) All(ctx context.Context) {
 	}
 
 	corporations := map[int64][]db.TokenCharacter{}
+	corporationOf := map[int64]int64{}
 	for _, character := range characters {
 		r.logErrors(character.CharacterName, r.Character(ctx, character))
 
@@ -76,9 +80,17 @@ func (r *Refresher) All(ctx context.Context) {
 		}
 		r.recordCorporation(ctx, character, info.CorporationId)
 		corporations[info.CorporationId] = append(corporations[info.CorporationId], character)
+		corporationOf[character.CharacterID] = info.CorporationId
 	}
 	for corporationID, members := range corporations {
 		r.logErrors(fmt.Sprintf("corporation %d", corporationID), r.Corporation(ctx, corporationID, members))
+	}
+	for _, character := range characters {
+		if corporationID, ok := corporationOf[character.CharacterID]; ok {
+			if err := r.SavePlaces(ctx, character, corporationID); err != nil {
+				log.Printf("refresh: places of %s: %v", character.CharacterName, err)
+			}
+		}
 	}
 	// new deliveries first, so today's prices include their items
 	if err := r.recordNewDeliveries(ctx); err != nil {
@@ -90,9 +102,8 @@ func (r *Refresher) All(ctx context.Context) {
 	if err := r.priceDeliveries(ctx); err != nil {
 		log.Printf("refresh: pricing delivered industry jobs: %v", err)
 	}
-	// last, as the first day's asset prices can take a while
-	if err := r.saveHeldPrices(ctx); err != nil {
-		log.Printf("refresh: today's Jita prices of assets: %v", err)
+	if err := r.TakeSnapshots(ctx, time.Now()); err != nil {
+		log.Printf("refresh: net worth snapshots: %v", err)
 	}
 }
 
@@ -123,6 +134,9 @@ func (r *Refresher) InBackground(characterID int64) {
 		}
 		r.recordCorporation(ctx, character, info.CorporationId)
 		r.logErrors(fmt.Sprintf("corporation %d", info.CorporationId), r.Corporation(ctx, info.CorporationId, []db.TokenCharacter{character}))
+		if err := r.SavePlaces(ctx, character, info.CorporationId); err != nil {
+			log.Printf("refresh: places of %s: %v", character.CharacterName, err)
+		}
 		if err := r.RecordDeliveries(ctx); err != nil {
 			log.Printf("refresh: delivered industry jobs: %v", err)
 		}
@@ -202,6 +216,14 @@ func (r *Refresher) Character(ctx context.Context, character db.TokenCharacter) 
 			return err
 		}
 		return db.ReplaceAssets(ctx, id, db.OwnerCharacter, assets)
+	})
+	// after the assets, which say where each blueprint is
+	run("blueprints", ScopeCharacterBPs, func(token string) error {
+		blueprints, err := r.ESI.GetCharacterBlueprints(ctx, id, token)
+		if err != nil {
+			return err
+		}
+		return db.ReplaceBlueprints(ctx, id, db.OwnerCharacter, blueprints)
 	})
 	run("industry jobs", ScopeCharacterJobs, func(token string) error {
 		jobs, err := r.ESI.GetCharacterIndustryJobs(ctx, id, token)
@@ -287,6 +309,13 @@ func (r *Refresher) Corporation(ctx context.Context, corporationID int64, member
 			return err
 		}
 		return db.ReplaceAssets(ctx, id, db.OwnerCorporation, assets)
+	})
+	run("blueprints", ScopeCorporationBPs, func(_ db.TokenCharacter, token string) error {
+		blueprints, err := r.ESI.GetCorporationBlueprints(ctx, id, token)
+		if err != nil {
+			return err
+		}
+		return db.ReplaceBlueprints(ctx, id, db.OwnerCorporation, blueprints)
 	})
 	run("industry jobs", ScopeCorporationJobs, func(_ db.TokenCharacter, token string) error {
 		jobs, err := r.ESI.GetCorporationIndustryJobs(ctx, id, token)

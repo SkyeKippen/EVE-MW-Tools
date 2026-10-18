@@ -1,0 +1,12 @@
+/* The net worth chart on My Worth. The line colors come from the theme
+   tokens, so they follow dark mode. */
+
+.networth-chart {
+    position: relative;
+    height: 420px;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+    .networth-chart { height: 300px; }
+}

@@ -4,6 +4,8 @@
 --   owner_type     character or corporation
 --   location_id    a station, structure, solar system, or the item_id of the
 --                  container, ship or office the item is in
+--   place_id       the station or structure the item is in, following it out
+--                  of containers, ships and offices; NULL in space
 -- Safe to run more than once.
 begin;
 create schema if not exists lifetime_indy;
@@ -20,9 +22,13 @@ create table if not exists assets (
     location_type text not null,
     is_singleton bool not null,
     is_blueprint_copy bool not null default false,
+    place_id bigint,
     updated_at timestamptz not null default now(),
     primary key (owner_id, item_id)
 );
 create index if not exists assets_type_id_idx on assets (owner_id, type_id);
 create index if not exists assets_location_id_idx on assets (location_id);
+-- added for stockpiles; filled in from the next refresh
+alter table assets add column if not exists place_id bigint;
+create index if not exists assets_place_id_idx on assets (owner_id, place_id);
 commit;

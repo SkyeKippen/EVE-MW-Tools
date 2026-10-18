@@ -1,48 +1,48 @@
 package db
 
 import (
-	"LifetimeIndustryTracker/src/mining"
+	"MeadowWorksTools/src/mining"
+	"MeadowWorksTools/src/prices"
 	"context"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
-// SaveJitaSellPrices stores each material's Jita sell price as the day's
-// price, replacing one saved earlier the same day.
-func SaveJitaSellPrices(ctx context.Context, date time.Time, prices map[int64]float64) error {
-	batch := &pgx.Batch{}
-	for typeID, price := range prices {
-		batch.Queue(`INSERT INTO lifetime_indy.jita_sell_prices (type_id, price_date, sell_price)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (type_id, price_date) DO UPDATE SET sell_price = $3, updated_at = now()`,
-			typeID, date, price)
-	}
-	return sendBatch(ctx, batch)
-}
-
-// PricedOn returns which of the materials already have a price saved for
-// the day.
-func PricedOn(ctx context.Context, typeIDs []int64, date time.Time) (map[int64]bool, error) {
+// SaveDailyJitaPrices saves the day's Jita sell prices, replacing any
+// already saved for that day.
+func SaveDailyJitaPrices(ctx context.Context, day time.Time, list []prices.Price) error {
 	conn, err := connectDB()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	rows, err := conn.Query(ctx,
-		`SELECT type_id FROM lifetime_indy.jita_sell_prices WHERE type_id = ANY($1) AND price_date = $2`,
-		typeIDs, date)
+	return pgx.BeginFunc(ctx, conn, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM lifetime_indy.jita_sell_prices WHERE price_date = $1`, day); err != nil {
+			return err
+		}
+		_, err := tx.CopyFrom(ctx, pgx.Identifier{"lifetime_indy", "jita_sell_prices"},
+			[]string{"type_id", "price_date", "sell_price", "min_price", "volume", "order_count"},
+			pgx.CopyFromSlice(len(list), func(i int) ([]any, error) {
+				p := list[i]
+				return []any{p.TypeId, day, p.SellPrice, p.MinPrice, p.Volume, p.OrderCount}, nil
+			}))
+		return err
+	})
+}
+
+// LatestPriceDay returns the newest day with saved Jita prices, or the zero
+// time when there are none.
+func LatestPriceDay(ctx context.Context) (time.Time, error) {
+	conn, err := connectDB()
 	if err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[int64])
-	if err != nil {
-		return nil, err
+	var day *time.Time
+	err = conn.QueryRow(ctx, `SELECT max(price_date) FROM lifetime_indy.jita_sell_prices`).Scan(&day)
+	if err != nil || day == nil {
+		return time.Time{}, err
 	}
-	priced := make(map[int64]bool, len(ids))
-	for _, id := range ids {
-		priced[id] = true
-	}
-	return priced, nil
+	return *day, nil
 }
 
 // LoadJitaSellPrices returns every saved daily price of the materials.

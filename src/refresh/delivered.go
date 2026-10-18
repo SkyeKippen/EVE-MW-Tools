@@ -1,8 +1,8 @@
 package refresh
 
 import (
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/sde"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/sde"
 	"context"
 	"fmt"
 	"log"

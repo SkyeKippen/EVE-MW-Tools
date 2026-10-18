@@ -1,9 +1,9 @@
 package main
 
 import (
-	"LifetimeIndustryTracker/src/auth"
-	"LifetimeIndustryTracker/src/db"
-	"LifetimeIndustryTracker/src/worth"
+	"MeadowWorksTools/src/auth"
+	"MeadowWorksTools/src/db"
+	"MeadowWorksTools/src/worth"
 	"context"
 	"log"
 	"maps"
@@ -84,19 +84,28 @@ func renderMyWorth(w http.ResponseWriter, r *http.Request) {
 	assets, plex, unpriced := worth.ValueHoldings(quantities, prices)
 	netWorth := worth.Split{Liquid: liquid, Assets: assets, Plex: plex}
 
+	snapshots, err := db.LoadNetworthSnapshots(ctx, owners)
+	if err != nil {
+		log.Printf("renderMyWorth: snapshots: %v", err)
+		http.Error(w, "could not load net worth history: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	data := struct {
 		CharacterName string
 		Rows          []WorthRow
 		Since         time.Time
 		Corporations  int
 		Unpriced      int
+		Points        []worth.Point // net worth over time, oldest first
 	}{CharacterName: sess.CharacterName,
 		Rows: []WorthRow{
 			newWorthRow("All-time ISK earned", earned),
 			newWorthRow("All-time ISK spent", spent),
 			newWorthRow("Current net worth", netWorth),
 		},
-		Since: since, Corporations: len(corporationIDs), Unpriced: unpriced}
+		Since: since, Corporations: len(corporationIDs), Unpriced: unpriced,
+		Points: worth.Series(snapshots)}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "myworth.html", data); err != nil {
