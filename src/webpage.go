@@ -121,7 +121,7 @@ func main() {
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
-		port = "5003"
+		port = "5050"
 	}
 
 	log.Printf("Server listening on port %s", port)

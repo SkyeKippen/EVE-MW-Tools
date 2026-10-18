@@ -20,7 +20,7 @@ const (
 	RevokeURL        = "https://login.eveonline.com/v2/oauth/revoke"
 
 	// sent on every ESI and SSO request so CCP can identify and contact us
-	UserAgent = "MWHI Lifetime Indy Tracker (admin contact: skyemeadows20@gmail.com)"
+	UserAgent = "Meadow-Works Tools (admin contact: skyemeadows20@gmail.com)"
 )
 
 type Config struct {
