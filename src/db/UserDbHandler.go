@@ -140,3 +140,17 @@ func deleteUserIfEmpty(ctx context.Context, tx pgx.Tx, userID int64) error {
 		userID)
 	return err
 }
+
+// LoadFirstSignIn returns when the user first signed in: when their earliest
+// linked character was added.
+func LoadFirstSignIn(ctx context.Context, userID int64) (time.Time, error) {
+	conn, err := connectDB()
+	if err != nil {
+		return time.Time{}, err
+	}
+	var first time.Time
+	err = conn.QueryRow(ctx,
+		`SELECT coalesce(min(added_at), now()) FROM lifetime_indy.user_characters WHERE user_id = $1`,
+		userID).Scan(&first)
+	return first, err
+}

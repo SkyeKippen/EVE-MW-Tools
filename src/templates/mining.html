@@ -21,6 +21,8 @@
     {{if .ValueProblem}}<p class="muted">Ore values aren't shown: {{.ValueProblem}}.</p>{{end}}
     {{if .Unpriced}}<p class="muted">{{commaInt .Unpriced}} units couldn't be valued, because they don't refine (e.g. gas) or a material has no Jita price yet; values marked * leave them out.</p>{{end}}
 
+    {{template "tracking-for" .TrackingDays}}
+
     <div class="table-wrap">
         <table>
             <thead>

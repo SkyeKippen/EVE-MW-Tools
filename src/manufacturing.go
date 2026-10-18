@@ -71,9 +71,11 @@ func renderManufacturing(w http.ResponseWriter, r *http.Request) {
 		GrandQuantity int64
 		GrandValue    float64
 		Unpriced      int64
+		TrackingDays  int64
 	}{CharacterName: sess.CharacterName,
 		Columns: manufacturingColumns(sort), Items: items,
-		GrandQuantity: grandQuantity, GrandValue: grandValue, Unpriced: unpriced}
+		GrandQuantity: grandQuantity, GrandValue: grandValue, Unpriced: unpriced,
+		TrackingDays: trackingDays(ctx, sess.UserID, industryBackfillDays)}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "manufacturing.html", data); err != nil {

@@ -97,9 +97,10 @@ func renderMining(w http.ResponseWriter, r *http.Request) {
 		Unpriced      int64
 		ValueProblem  string
 		HasVolumes    bool
+		TrackingDays  int64
 	}{CharacterName: sess.CharacterName, Characters: characters, Ores: ores, GrandTotal: grandTotal,
 		GrandValue: grandValue, GrandVolume: grandVolume, Unpriced: unpriced, ValueProblem: valueProblem,
-		HasVolumes: volumesErr == nil}
+		HasVolumes: volumesErr == nil, TrackingDays: trackingDays(ctx, sess.UserID, miningBackfillDays)}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = tmpl.ExecuteTemplate(w, "mining.html", data)

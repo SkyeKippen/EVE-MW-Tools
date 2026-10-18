@@ -25,6 +25,9 @@
 </header>
 {{end}}
 
+{{/* tracking-for says how many days of data a page covers. */}}
+{{define "tracking-for"}}<p class="tracking-for">Tracking for: <strong>{{commaInt .}} days</strong></p>{{end}}
+
 {{/* footer is the slim bar at the bottom of every page: the credit on the
      left, the EVE Online trademark notice on the right. */}}
 {{define "footer"}}

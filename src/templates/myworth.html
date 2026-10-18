@@ -14,6 +14,8 @@
         <p class="muted">Your characters{{if .Corporations}} and their {{if eq .Corporations 1}}corporation{{else}}{{.Corporations}} corporations{{end}}{{end}} together. Wallets and assets are saved every hour, so changes show up after the next hourly refresh.</p>
     </div>
 
+    {{template "tracking-for" .TrackingDays}}
+
     <div class="table-wrap">
         <table>
             <thead>

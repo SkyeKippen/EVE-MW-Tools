@@ -16,6 +16,8 @@
 
     {{if .Unpriced}}<p class="muted">{{commaInt .Unpriced}} items have no Jita sell price yet; values marked * leave them out.</p>{{end}}
 
+    {{template "tracking-for" .TrackingDays}}
+
     <div class="table-wrap">
         <table>
             <thead>

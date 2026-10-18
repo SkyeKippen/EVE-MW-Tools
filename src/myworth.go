@@ -98,6 +98,7 @@ func renderMyWorth(w http.ResponseWriter, r *http.Request) {
 		Corporations  int
 		Unpriced      int
 		Points        []worth.Point // net worth over time, oldest first
+		TrackingDays  int64
 	}{CharacterName: sess.CharacterName,
 		Rows: []WorthRow{
 			newWorthRow("All-time ISK earned", earned),
@@ -105,7 +106,7 @@ func renderMyWorth(w http.ResponseWriter, r *http.Request) {
 			newWorthRow("Current net worth", netWorth),
 		},
 		Since: since, Corporations: len(corporationIDs), Unpriced: unpriced,
-		Points: worth.Series(snapshots)}
+		Points: worth.Series(snapshots), TrackingDays: trackingDays(ctx, sess.UserID, walletBackfillDays)}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "myworth.html", data); err != nil {

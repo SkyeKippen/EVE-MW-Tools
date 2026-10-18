@@ -15,6 +15,7 @@
     --pending: #a16207;
     --claimed: #c2410c;
     --plex: #7c3aed;
+    --highlight: #c2410c;    /* orange for a figure to notice; the dark theme's line orange */
     --switch-off: #4b5563;
     --bad: #b91c1c;
     --bad-soft: #fef2f2;
@@ -41,6 +42,7 @@
         --pending: #facc15;
         --claimed: #fb923c;
         --plex: #c084fc;
+        --highlight: #e18000;
         --switch-off: #374151;
         --bad: #f87171;
         --bad-soft: #2a1515;
@@ -662,3 +664,7 @@ code {
 
 .notice-good { border-left-color: var(--good); }
 .notice-bad { border-left-color: var(--bad); }
+
+/* "Tracking for: N days" above a page's table */
+.tracking-for { margin: 0 0 12px; }
+.tracking-for strong { color: var(--highlight); }
