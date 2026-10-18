@@ -91,6 +91,22 @@
                             <tr><td class="empty" colspan="9">Nothing in this stockpile yet.</td></tr>
                         {{end}}
                         </tbody>
+                        {{if .Items}}
+                        <tfoot>
+                            <tr class="stockpile-total">
+                                <th colspan="5">Total</th>
+                                <th class="level-cell" title="The average of each item's level, counting overstocked items as full">
+                                    <span class="level" hidden>
+                                        <span class="level-bar"><span class="level-fill"></span></span>
+                                        <span class="level-percent"></span>
+                                    </span>
+                                </th>
+                                <th class="num value-cell stock-value"><span class="muted">…</span></th>
+                                <th class="num value-cell missing-value"><span class="muted">…</span></th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                        {{end}}
                     </table>
                     <p class="muted hint count-note" hidden></p>
                     <div class="actions stockpile-actions">

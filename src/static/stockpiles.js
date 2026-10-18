@@ -106,6 +106,46 @@
         showValue(row.querySelector(".missing-value"), priced ? missing * price : null, emptyTitle);
     }
 
+    // Shows a level bar in a Level cell: the bar stops at full, but the
+    // percent shows any extra, e.g. 130%.
+    function showLevel(level, fraction) {
+        level.parentElement.dataset.sortValue = fraction;
+        const filled = Math.min(fraction, 1);
+        const fill = level.querySelector(".level-fill");
+        fill.style.width = (filled * 100) + "%";
+        // red at empty, through amber, to green at full
+        fill.style.backgroundColor = "hsl(" + Math.round(filled * 120) + ", 70%, 45%)";
+        level.querySelector(".level-percent").textContent = Math.floor(fraction * 100) + "%";
+        level.hidden = false;
+    }
+
+    // Fills in a stockpile's total row: the summed Stockpile Value and
+    // Missing Value of its priced items, and the average level of all its
+    // items, with overstocked ones counting as full so they don't hide
+    // shortages.
+    function showTotals(table) {
+        const total = table.querySelector("tfoot .stockpile-total");
+        if (!total) return;
+        let stock = 0, missing = 0, priced = 0, levels = 0, rows = 0;
+        table.tBodies[0].querySelectorAll("tr").forEach(function (row) {
+            const level = row.querySelector(".level-cell");
+            if (!level || level.dataset.sortValue === undefined) return;
+            rows++;
+            levels += Math.min(Number(level.dataset.sortValue), 1);
+            const value = Number(row.querySelector(".stock-value").dataset.sortValue);
+            if (value >= 0) {
+                priced++;
+                stock += value;
+                missing += Number(row.querySelector(".missing-value").dataset.sortValue);
+            }
+        });
+        if (rows === 0) return;
+        showLevel(total.querySelector(".level"), levels / rows);
+        const unpricedTitle = "None of these items have a Jita sell price";
+        showValue(total.querySelector(".stock-value"), priced > 0 ? stock : null, unpricedTitle);
+        showValue(total.querySelector(".missing-value"), priced > 0 ? missing : null, unpricedTitle);
+    }
+
     // Fills in the Missing and Level cells next to an In Station cell.
     // fraction is how much of Wanted is in station; the bar stops at full,
     // but the percent shows any extra, e.g. 130%.
@@ -117,15 +157,7 @@
         missingCell.classList.toggle("stock-short", missing > 0);
         missingCell.classList.toggle("muted", missing === 0);
 
-        const level = row.querySelector(".level");
-        level.parentElement.dataset.sortValue = fraction;
-        const filled = Math.min(fraction, 1);
-        const fill = level.querySelector(".level-fill");
-        fill.style.width = (filled * 100) + "%";
-        // red at empty, through amber, to green at full
-        fill.style.backgroundColor = "hsl(" + Math.round(filled * 120) + ", 70%, 45%)";
-        level.querySelector(".level-percent").textContent = Math.floor(fraction * 100) + "%";
-        level.hidden = false;
+        showLevel(row.querySelector(".level"), fraction);
     }
 
     // Fill in the In Station column from the assets saved by the hourly
@@ -167,6 +199,7 @@
                     showValues(cell.closest("tr"), count, Math.max(wanted - count, 0), (data.prices || {})[typeId],
                         "No Jita sell price for this item");
                 });
+                document.querySelectorAll("table.sortable").forEach(showTotals);
                 const notes = [];
                 if (!data.characterAssets) notes.push("None of your characters' assets are saved yet, so they aren't counted. They're saved every hour once you've signed in with the Character assets permission.");
                 if (!data.corpAssets) notes.push("None of your corporations' assets are saved, so only your characters' are counted. Corporation assets need the Corporation assets permission and the Director role.");
@@ -187,6 +220,9 @@
                     cell.closest("tr").querySelectorAll(".missing-cell, .value-cell").forEach(function (c) {
                         c.textContent = "";
                     });
+                });
+                document.querySelectorAll("tfoot .value-cell").forEach(function (c) {
+                    c.textContent = "";
                 });
             });
     }
