@@ -80,7 +80,9 @@ func SaveCorporationMiningLedger(ctx context.Context, rows []CorpMiningRow) erro
 }
 
 // LoadOreTotals adds up everything the characters have ever mined, per base
-// ore, largest first.
+// ore, largest first. The base ore is worked out from each ore type's name
+// rather than read from base_ore, so rows saved before a naming rule was
+// added (such as moon ore variants) are grouped correctly too.
 func LoadOreTotals(ctx context.Context, characterIDs []int64) ([]mining.OreTotal, error) {
 	conn, err := connectDB()
 	if err != nil {
@@ -88,18 +90,27 @@ func LoadOreTotals(ctx context.Context, characterIDs []int64) ([]mining.OreTotal
 	}
 
 	rows, err := conn.Query(ctx,
-		`SELECT base_ore, sum(quantity)::bigint, array_agg(DISTINCT ore_type ORDER BY ore_type)
+		`SELECT ore_type, sum(quantity)::bigint
 		FROM lifetime_indy.mining_ledger
 		WHERE character_id = ANY($1)
-		GROUP BY base_ore
-		ORDER BY sum(quantity) DESC, base_ore`,
+		GROUP BY ore_type`,
 		characterIDs)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (mining.OreTotal, error) {
-		var total mining.OreTotal
-		err := row.Scan(&total.BaseOre, &total.Quantity, &total.Variants)
-		return total, err
-	})
+	defer rows.Close()
+
+	byType := map[string]int64{}
+	for rows.Next() {
+		var oreType string
+		var quantity int64
+		if err := rows.Scan(&oreType, &quantity); err != nil {
+			return nil, err
+		}
+		byType[oreType] = quantity
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return mining.TotalsByBaseOre(byType), nil
 }

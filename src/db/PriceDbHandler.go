@@ -80,17 +80,18 @@ func LoadMinedDays(ctx context.Context, characterIDs []int64) ([]mining.MinedDay
 		return nil, err
 	}
 	rows, err := conn.Query(ctx,
-		`SELECT type_id, ore_type, base_ore, date, sum(quantity)::bigint
+		`SELECT type_id, ore_type, date, sum(quantity)::bigint
 		FROM lifetime_indy.mining_ledger
 		WHERE character_id = ANY($1)
-		GROUP BY type_id, ore_type, base_ore, date`,
+		GROUP BY type_id, ore_type, date`,
 		characterIDs)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (mining.MinedDay, error) {
 		var day mining.MinedDay
-		err := row.Scan(&day.TypeID, &day.OreType, &day.BaseOre, &day.Date, &day.Quantity)
+		err := row.Scan(&day.TypeID, &day.OreType, &day.Date, &day.Quantity)
+		day.BaseOre = mining.BaseOreName(day.OreType)
 		return day, err
 	})
 }

@@ -15,6 +15,11 @@ func TestGradeMultiplier(t *testing.T) {
 		"Scordite III-Grade":             1.10,
 		"Compressed Dark Ochre IV-Grade": 1.15,
 		"Blue Ice":                       1,
+		"Zeolites":                       1,
+		"Brimful Zeolites":               1.15,
+		"Compressed Glistening Bitumens": 2,
+		"Lavish Chromite":                1.15,
+		"Shimmering Otavite":             2,
 	} {
 		if got := GradeMultiplier(name); got != want {
 			t.Errorf("GradeMultiplier(%q) = %v, want %v", name, got, want)

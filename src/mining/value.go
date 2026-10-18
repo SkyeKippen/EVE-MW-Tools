@@ -15,8 +15,12 @@ var gradeYield = map[string]float64{
 
 // GradeMultiplier returns how much a unit of the ore refines into compared
 // with its base ore: 1.05 for II-Grade, 1.10 for III-Grade, 1.15 for
-// IV-Grade and 1 for anything else.
+// IV-Grade, 1.15 and 2 for the two moon ore variants of each rarity (e.g.
+// Brimful and Glistening Zeolites) and 1 for anything else.
 func GradeMultiplier(name string) float64 {
+	if _, variant, ok := moonVariant(name); ok {
+		return variant.yield
+	}
 	if match := gradeSuffix.FindString(name); match != "" {
 		if multiplier, ok := gradeYield[strings.TrimSpace(match)]; ok {
 			return multiplier
