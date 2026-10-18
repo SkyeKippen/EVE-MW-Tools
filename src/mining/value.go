@@ -25,17 +25,22 @@ func GradeMultiplier(name string) float64 {
 	return 1
 }
 
-// Recipe is what one unit of an ore refines into, at full refining yield:
+// RefiningYield is the best share of an ore's materials refining gives in
+// EVE, with max skills, implant and structure bonuses.
+const RefiningYield = 0.90628
+
+// Recipe is what one unit of an ore refines into at RefiningYield:
 // material type ID to quantity.
 type Recipe map[int64]float64
 
 // NewRecipe works out what one unit of an ore refines into from what a
-// portion of its base ore refines into, applying the ore's grade bonus.
+// portion of its base ore refines into, applying the ore's grade bonus and
+// RefiningYield.
 func NewRecipe(oreName string, baseMaterials map[int64]int64, portionSize int64) Recipe {
 	multiplier := GradeMultiplier(oreName)
 	recipe := make(Recipe, len(baseMaterials))
 	for typeID, quantity := range baseMaterials {
-		recipe[typeID] = float64(quantity) * multiplier / float64(max(portionSize, 1))
+		recipe[typeID] = float64(quantity) * multiplier * RefiningYield / float64(max(portionSize, 1))
 	}
 	return recipe
 }

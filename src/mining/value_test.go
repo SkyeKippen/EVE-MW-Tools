@@ -44,13 +44,13 @@ func TestAddValues(t *testing.T) {
 	book := PriceBook{34: {{day(1), 2}, {day(10), 3}}}
 	totals := []OreTotal{{BaseOre: "Veldspar"}, {BaseOre: "Fullerite-C50"}}
 	AddValues(totals, []MinedDay{
-		{TypeID: 1230, BaseOre: "Veldspar", Date: day(2), Quantity: 1000},  // 1000*4*2 = 8000
-		{TypeID: 17470, BaseOre: "Veldspar", Date: day(9), Quantity: 1000}, // 1000*4.2*3 = 12600
+		{TypeID: 1230, BaseOre: "Veldspar", Date: day(2), Quantity: 1000},  // 1000*4*2 = 8000 at full yield
+		{TypeID: 17470, BaseOre: "Veldspar", Date: day(9), Quantity: 1000}, // 1000*4.2*3 = 12600 at full yield
 		{TypeID: 30375, BaseOre: "Fullerite-C50", Date: day(9), Quantity: 50},
 	}, recipes, book)
 
-	if math.Abs(totals[0].Value-20600) > 1e-6 || totals[0].UnpricedQuantity != 0 {
-		t.Errorf("Veldspar = %v (%d unpriced), want 20600", totals[0].Value, totals[0].UnpricedQuantity)
+	if want := 20600 * RefiningYield; math.Abs(totals[0].Value-want) > 1e-6 || totals[0].UnpricedQuantity != 0 {
+		t.Errorf("Veldspar = %v (%d unpriced), want %v", totals[0].Value, totals[0].UnpricedQuantity, want)
 	}
 	if totals[1].Value != 0 || totals[1].UnpricedQuantity != 50 {
 		t.Errorf("gas = %v (%d unpriced), want 0 and 50 unpriced", totals[1].Value, totals[1].UnpricedQuantity)
