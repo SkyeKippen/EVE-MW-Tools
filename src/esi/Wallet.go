@@ -54,3 +54,32 @@ func (c *Client) GetCharacterWalletBalance(ctx context.Context, characterId int6
 func (c *Client) GetCorporationWalletBalances(ctx context.Context, corporationId int64, accessToken string) ([]WalletBalance, error) {
 	return get[[]WalletBalance](ctx, c, c.url("/corporations/%d/wallets", corporationId), accessToken)
 }
+
+// WalletTransaction is one market purchase or sale from a character's or
+// corporation's wallet.
+type WalletTransaction struct {
+	TransactionId int64     `json:"transaction_id"`
+	Date          time.Time `json:"date"`
+	TypeId        int64     `json:"type_id"`
+	Quantity      int64     `json:"quantity"`
+	UnitPrice     float64   `json:"unit_price"`
+	IsBuy         bool      `json:"is_buy"`
+	IsPersonal    bool      `json:"is_personal"` // character transactions only; false when made for the corporation
+	ClientId      int64     `json:"client_id"`
+	LocationId    int64     `json:"location_id"`
+	JournalRefId  int64     `json:"journal_ref_id"`
+}
+
+// GetCharacterWalletTransactions returns the character's latest market
+// transactions (ESI keeps 30 days). Needs the
+// esi-wallet.read_character_wallet.v1 scope.
+func (c *Client) GetCharacterWalletTransactions(ctx context.Context, characterId int64, accessToken string) ([]WalletTransaction, error) {
+	return get[[]WalletTransaction](ctx, c, c.url("/characters/%d/wallet/transactions", characterId), accessToken)
+}
+
+// GetCorporationWalletTransactions returns one wallet division's latest
+// market transactions. Needs the esi-wallet.read_corporation_wallets.v1 scope
+// and the Accountant or Junior Accountant role.
+func (c *Client) GetCorporationWalletTransactions(ctx context.Context, corporationId int64, division int, accessToken string) ([]WalletTransaction, error) {
+	return get[[]WalletTransaction](ctx, c, c.url("/corporations/%d/wallets/%d/transactions", corporationId, division), accessToken)
+}

@@ -4,6 +4,7 @@ import (
 	"LifetimeIndustryTracker/src/db"
 	"LifetimeIndustryTracker/src/mining"
 	"LifetimeIndustryTracker/src/sde"
+	"LifetimeIndustryTracker/src/worth"
 	"context"
 	"fmt"
 	"slices"
@@ -64,10 +65,17 @@ func (r *Refresher) SaveJitaPrices(ctx context.Context, typeIDs []int64) error {
 	if err != nil {
 		return err
 	}
-	// prices fetched before an error are still saved
+	// prices are saved as they're fetched, so a long first run that times
+	// out or fails keeps what it got
 	prices := map[int64]float64{}
 	var fetchErr error
 	for _, typeID := range typeIDs {
+		if len(prices) >= 100 {
+			if err := db.SaveJitaSellPrices(ctx, date, prices); err != nil {
+				return err
+			}
+			clear(prices)
+		}
 		unsoldMu.Lock()
 		checked := unsoldDay[typeID].Equal(date)
 		unsoldMu.Unlock()
@@ -112,6 +120,22 @@ func (r *Refresher) saveDailyPrices(ctx context.Context) error {
 	for _, productID := range productIDs {
 		if !slices.Contains(typeIDs, productID) {
 			typeIDs = append(typeIDs, productID)
+		}
+	}
+	return r.SaveJitaPrices(ctx, typeIDs)
+}
+
+// saveHeldPrices saves today's Jita sell price of everything held in assets
+// and open sell orders that can be traded on the market, for My Worth.
+func (r *Refresher) saveHeldPrices(ctx context.Context) error {
+	held, err := db.LoadHeldTypeIDs(ctx)
+	if err != nil {
+		return err
+	}
+	typeIDs := []int64{worth.PlexTypeID}
+	for _, typeID := range held {
+		if typeID != worth.PlexTypeID && sde.OnMarket(typeID) {
+			typeIDs = append(typeIDs, typeID)
 		}
 	}
 	return r.SaveJitaPrices(ctx, typeIDs)

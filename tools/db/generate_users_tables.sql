@@ -1,7 +1,8 @@
 -- Adds users, so one person can sign in with a main character and add alts.
 --   users            one row per person using the tracker
 --   user_characters  each character linked to a user; the character with the
---                    earliest added_at is the one they first signed in with
+--                    earliest added_at is the one they first signed in with;
+--                    corporation_id is filled in by the hourly refresh
 -- Every character that already has a saved token becomes its own user, in
 -- the order they first signed in. Run after generate_esi_tokens_table.sql.
 -- Safe to run more than once.
@@ -21,6 +22,10 @@ create table if not exists user_characters (
     added_at timestamptz not null default now()
 );
 create index if not exists user_characters_user_id_idx on user_characters (user_id);
+
+-- the corporation each character is in, kept up to date by the hourly
+-- refresh, so pages can include their corporations' wallets and assets
+alter table user_characters add column if not exists corporation_id bigint;
 
 -- backfill: one user per character that signed in before users existed
 do $$

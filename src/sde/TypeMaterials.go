@@ -68,6 +68,7 @@ type sdeData struct {
 	typeGroups map[int64]int64  // type ID to group ID
 	portions   map[int64]int64  // type ID to units refined at a time
 	typeIDs    map[string]int64 // English name to type ID
+	onMarket   map[int64]bool   // types that can be bought and sold on the market
 	blueprints map[int64]Blueprint
 	groups     map[int64]Group
 	categories map[int64]string
@@ -119,6 +120,14 @@ func TypeIDByName(name string) (int64, bool) {
 	defer mu.Unlock()
 	typeID, ok := loaded.typeIDs[name]
 	return typeID, ok
+}
+
+// OnMarket reports whether the type can be traded on the market, so has a
+// price worth looking up. It is false for everything until the SDE loads.
+func OnMarket(typeID int64) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	return loaded.onMarket[typeID]
 }
 
 // PortionSize returns how many units of a type are refined at a time, e.g.
@@ -189,12 +198,16 @@ func load(ctx context.Context) error {
 	data.typeGroups = make(map[int64]int64, len(types))
 	data.portions = make(map[int64]int64, len(types))
 	data.typeIDs = make(map[string]int64, len(types))
+	data.onMarket = make(map[int64]bool, len(types))
 	for typeID, info := range types {
 		if info.Volume != nil {
 			data.volumes[typeID] = *info.Volume
 		}
 		data.typeGroups[typeID] = info.GroupID
 		data.portions[typeID] = info.PortionSize
+		if info.Published && info.MarketGroupID != 0 {
+			data.onMarket[typeID] = true
+		}
 		if other, taken := data.typeIDs[info.Name]; !taken || (info.Published && !types[other].Published) {
 			data.typeIDs[info.Name] = typeID
 		}
@@ -283,27 +296,31 @@ type TypeInfo struct {
 	GroupID     int64
 	PortionSize int64
 	Published   bool
+	// MarketGroupID is 0 for types that can't be traded on the market
+	MarketGroupID int64
 }
 
 // ParseTypes reads each type's name, volume, group and portion size from
 // the SDE's types.jsonl: one line per type, {"_key": typeID, "groupID": ...,
-// "name": {"en": ...}, "portionSize": ..., "published": ..., "volume": m3}.
+// "marketGroupID": ..., "name": {"en": ...}, "portionSize": ...,
+// "published": ..., "volume": m3}.
 func ParseTypes(r io.Reader) (map[int64]TypeInfo, error) {
 	loaded := map[int64]TypeInfo{}
 	err := eachLine(r, func(line []byte) error {
 		var entry struct {
-			Key         int64             `json:"_key"`
-			GroupID     int64             `json:"groupID"`
-			Name        map[string]string `json:"name"`
-			PortionSize int64             `json:"portionSize"`
-			Published   bool              `json:"published"`
-			Volume      *float64          `json:"volume"`
+			Key           int64             `json:"_key"`
+			GroupID       int64             `json:"groupID"`
+			MarketGroupID int64             `json:"marketGroupID"`
+			Name          map[string]string `json:"name"`
+			PortionSize   int64             `json:"portionSize"`
+			Published     bool              `json:"published"`
+			Volume        *float64          `json:"volume"`
 		}
 		if err := json.Unmarshal(line, &entry); err != nil {
 			return err
 		}
 		loaded[entry.Key] = TypeInfo{Name: entry.Name["en"], Volume: entry.Volume, GroupID: entry.GroupID,
-			PortionSize: entry.PortionSize, Published: entry.Published}
+			PortionSize: entry.PortionSize, Published: entry.Published, MarketGroupID: entry.MarketGroupID}
 		return nil
 	})
 	if err == nil && len(loaded) == 0 {

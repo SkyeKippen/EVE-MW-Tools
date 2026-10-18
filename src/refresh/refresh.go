@@ -56,8 +56,8 @@ func (r *Refresher) Every(interval time.Duration) {
 
 // All refreshes every character with a saved token, then each of their
 // corporations once, then records newly delivered manufacturing and
-// reaction jobs, saves today's Jita prices (once a day) and values the
-// deliveries.
+// reaction jobs, saves today's Jita prices (once a day), values the
+// deliveries, then saves today's prices of everything held in assets.
 func (r *Refresher) All(ctx context.Context) {
 	characters, err := db.ListTokenCharacters(ctx)
 	if err != nil {
@@ -74,6 +74,7 @@ func (r *Refresher) All(ctx context.Context) {
 			log.Printf("refresh: corporation of %s: %v", character.CharacterName, err)
 			continue
 		}
+		r.recordCorporation(ctx, character, info.CorporationId)
 		corporations[info.CorporationId] = append(corporations[info.CorporationId], character)
 	}
 	for corporationID, members := range corporations {
@@ -88,6 +89,18 @@ func (r *Refresher) All(ctx context.Context) {
 	}
 	if err := r.priceDeliveries(ctx); err != nil {
 		log.Printf("refresh: pricing delivered industry jobs: %v", err)
+	}
+	// last, as the first day's asset prices can take a while
+	if err := r.saveHeldPrices(ctx); err != nil {
+		log.Printf("refresh: today's Jita prices of assets: %v", err)
+	}
+}
+
+// recordCorporation saves which corporation the character is in, for the
+// pages that include their corporations.
+func (r *Refresher) recordCorporation(ctx context.Context, character db.TokenCharacter, corporationID int64) {
+	if err := db.SetCharacterCorporation(ctx, character.CharacterID, corporationID); err != nil {
+		log.Printf("refresh: saving the corporation of %s: %v", character.CharacterName, err)
 	}
 }
 
@@ -108,6 +121,7 @@ func (r *Refresher) InBackground(characterID int64) {
 			log.Printf("refresh: corporation of %s: %v", character.CharacterName, err)
 			return
 		}
+		r.recordCorporation(ctx, character, info.CorporationId)
 		r.logErrors(fmt.Sprintf("corporation %d", info.CorporationId), r.Corporation(ctx, info.CorporationId, []db.TokenCharacter{character}))
 		if err := r.RecordDeliveries(ctx); err != nil {
 			log.Printf("refresh: delivered industry jobs: %v", err)
@@ -156,6 +170,13 @@ func (r *Refresher) Character(ctx context.Context, character db.TokenCharacter) 
 			return err
 		}
 		return db.SaveWalletBalance(ctx, id, db.OwnerCharacter, 0, balance)
+	})
+	run("wallet transactions", ScopeCharacterWallet, func(token string) error {
+		transactions, err := r.ESI.GetCharacterWalletTransactions(ctx, id, token)
+		if err != nil {
+			return err
+		}
+		return db.SaveWalletTransactions(ctx, id, db.OwnerCharacter, 0, transactions)
 	})
 	run("loyalty points", ScopeLoyalty, func(token string) error {
 		points, err := r.ESI.GetCharacterLoyaltyPoints(ctx, id, token)
@@ -237,6 +258,13 @@ func (r *Refresher) Corporation(ctx context.Context, corporationID int64, member
 				return fmt.Errorf("division %d: %w", division, err)
 			}
 			if err := db.SaveCorporationWalletJournal(ctx, id, division, entries); err != nil {
+				return err
+			}
+			transactions, err := r.ESI.GetCorporationWalletTransactions(ctx, id, division, token)
+			if err != nil {
+				return fmt.Errorf("division %d transactions: %w", division, err)
+			}
+			if err := db.SaveWalletTransactions(ctx, id, db.OwnerCorporation, division, transactions); err != nil {
 				return err
 			}
 		}

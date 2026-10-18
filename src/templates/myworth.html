@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+</head>
+<body>
+
+{{template "header" "worth"}}
+
+<main class="page">
+    <div class="page-head">
+        <h2>My Worth</h2>
+        <p class="muted">Your characters{{if .Corporations}} and their {{if eq .Corporations 1}}corporation{{else}}{{.Corporations}} corporations{{end}}{{end}} together. Wallets and assets are saved every hour, so changes show up after the next hourly refresh.</p>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th class="num">Total <span class="unit">ISK</span></th>
+                    <th class="num">Liquid <span class="unit">ISK</span></th>
+                    <th class="num">Assets <span class="unit">ISK</span></th>
+                    <th class="num">PLEX <span class="unit">ISK</span></th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .Rows}}
+                <tr>
+                    <td><strong class="pilot">{{.Label}}</strong></td>
+                    <td class="num"><strong>{{isk .Total}}</strong></td>
+                    {{template "worth-part" .Liquid}}
+                    {{template "worth-part" .Assets}}
+                    {{template "worth-part" .Plex}}
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-head">
+        <p class="muted"><strong>Earned and spent</strong> count every wallet entry saved
+            {{- if .Since.IsZero}} (none yet){{else}} since {{.Since.Format "2 Jan 2006"}}{{end}}, as ESI only keeps 30 days.
+            Assets are market sales and purchases of items and PLEX is PLEX bought or sold; liquid is everything else, such as bounties, contracts, taxes and fees.
+            ISK moved between your own characters and corporations isn't counted.</p>
+        <p class="muted"><strong>Net worth</strong>: liquid is your wallets plus ISK held in buy orders. Assets are your items and sell orders at today's Jita sell price (blueprint copies count as nothing), and PLEX is the PLEX in your hangars at the global PLEX market price. ESI can't read the PLEX vault, so it isn't included.
+            {{- if .Unpriced}} {{.Unpriced}} item types have no saved price yet and are left out.{{end}}</p>
+    </div>
+</main>
+
+</body>
+</html>
+
+{{define "worth-part"}}<td class="num">{{isk .Amount}} <span class="muted">{{percent .Percent}}</span></td>{{end}}

@@ -30,6 +30,11 @@ func isk(amount float64) string {
 	return commaInt(int64(math.Round(amount)))
 }
 
+// percent shows a share to one decimal place, e.g. 42.5%.
+func percent(share float64) string {
+	return fmt.Sprintf("%.1f%%", share)
+}
+
 func addCommas(s string) string {
 	neg := false
 	if strings.HasPrefix(s, "-") {
@@ -57,6 +62,7 @@ var tmpl = template.Must(
 		"commaInt": commaInt,
 		"isk":      isk,
 		"m3":       isk,
+		"percent":  percent,
 	}).ParseGlob("src/templates/*.html"),
 )
 
@@ -98,6 +104,7 @@ func main() {
 	http.HandleFunc("/characters/add", auth.RequireAuth(renderAddAltCharacter))
 	http.HandleFunc("/mining", auth.RequireAuth(renderMining))
 	http.HandleFunc("/manufacturing", auth.RequireAuth(renderManufacturing))
+	http.HandleFunc("/worth", auth.RequireAuth(renderMyWorth))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)

@@ -19,13 +19,14 @@ func TestParseTypeMaterials(t *testing.T) {
 
 func TestParseTypes(t *testing.T) {
 	got, err := ParseTypes(strings.NewReader(
-		`{"_key":1230,"groupID":462,"name":{"en":"Veldspar"},"volume":0.1,"portionSize":100}` + "\n" +
+		`{"_key":1230,"groupID":462,"marketGroupID":518,"name":{"en":"Veldspar"},"volume":0.1,"portionSize":100}` + "\n" +
 			`{"_key":28432,"groupID":1,"volume":0.001}` + "\n" + `{"_key":5,"groupID":2}` + "\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 3 || *got[1230].Volume != 0.1 || got[1230].GroupID != 462 || got[5].Volume != nil ||
-		got[1230].Name != "Veldspar" || got[1230].PortionSize != 100 {
+		got[1230].Name != "Veldspar" || got[1230].PortionSize != 100 || got[1230].MarketGroupID != 518 ||
+		got[5].MarketGroupID != 0 {
 		t.Errorf("got %v", got)
 	}
 }

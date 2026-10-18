@@ -7,6 +7,7 @@
 \ir generate_character_wallet_journal_table.sql
 \ir generate_corp_wallet_journal_table.sql
 \ir generate_wallet_balances_table.sql
+\ir generate_wallet_transactions_table.sql
 \ir generate_loyalty_points_table.sql
 \ir generate_market_orders_table.sql
 \ir generate_assets_table.sql
