@@ -13,7 +13,6 @@
 <header class="banner">
     <div class="banner-inner">
         <a class="brand" href="/">Meadow-Works Tools</a>
-        <span class="banner-tagline">Powered by MWHI Servers</span>
         <nav>
             <a href="/"{{if eq . "home"}} class="active"{{end}}>Home</a>
             <a href="/mining"{{if eq . "mining"}} class="active"{{end}}>Mining</a>
@@ -24,6 +23,15 @@
         </nav>
     </div>
 </header>
+{{end}}
+
+{{/* footer is the slim bar at the bottom of every page: the credit on the
+     left, the EVE Online trademark notice on the right. */}}
+{{define "footer"}}
+<footer class="site-footer">
+    <span>Powered by Meadow-Works Servers</span>
+    <span class="site-footer-legal">EVE Online and all related marks are trademarks of Fenris Creations. Meadow-Works is not affiliated with or endorsed by Fenris Creations.</span>
+</footer>
 {{end}}
 
 {{/* scope-picker is the EVE sign-in form with a switch per optional scope,

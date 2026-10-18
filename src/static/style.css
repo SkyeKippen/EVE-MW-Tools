@@ -67,6 +67,30 @@ body {
     line-height: 1.5;
     color: var(--text);
     background: var(--bg);
+    /* keeps the footer at the bottom of short pages */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+body > main { flex: 1 0 auto; }
+
+/* Slim bar at the bottom of every page: credit left, trademark notice right */
+.site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 24px;
+    padding: 10px 5%;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.site-footer-legal { text-align: right; }
+
+@media (max-width: 600px) {
+    .site-footer-legal { text-align: left; }
 }
 
 h2, h3 {
@@ -109,26 +133,6 @@ header.banner {
     font-weight: 700;
     letter-spacing: 0.02em;
     text-decoration: none;
-}
-
-/* Small muted credit, centered in the bar regardless of brand and nav widths. */
-.banner-tagline {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #7f9aa1;
-    font-size: 12px;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    pointer-events: none;
-}
-
-/* When the bar gets tight, let the credit sit in the flow between brand and nav so it never overlaps them. */
-@media (max-width: 1000px) {
-    .banner-tagline {
-        position: static;
-        transform: none;
-    }
 }
 
 header.banner nav {
