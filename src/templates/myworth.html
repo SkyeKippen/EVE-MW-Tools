@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 {{template "head"}}
-    <link rel="stylesheet" href="/static/networth.css">
+    <link rel="stylesheet" href="{{static "networth.css"}}">
 </head>
 <body>
 
@@ -63,7 +63,7 @@
 
 <script id="networth-points" type="application/json">{{.Points}}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/networth.js"></script>
+<script src="{{static "networth.js"}}"></script>
 {{template "footer"}}
 </body>
 </html>

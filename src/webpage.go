@@ -59,12 +59,22 @@ func addCommas(s string) string {
 	return out
 }
 
+// assetVersion changes every time the server starts, so links to static
+// files change too and browsers and proxies can't keep serving old copies.
+var assetVersion = strconv.FormatInt(time.Now().Unix(), 36)
+
+// static is the link to a file in src/static, e.g. {{static "style.css"}}.
+func static(name string) string {
+	return "/static/" + name + "?v=" + assetVersion
+}
+
 var tmpl = template.Must(
 	template.New("").Funcs(template.FuncMap{
 		"commaInt": commaInt,
 		"isk":      isk,
 		"m3":       isk,
 		"percent":  percent,
+		"static":   static,
 	}).ParseGlob("src/templates/*.html"),
 )
 
