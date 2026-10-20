@@ -1,0 +1,93 @@
+/* Shopping List page: ticked stockpiles and their missing items on the left,
+   the Multibuy box and its table on the right. */
+.shopping-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 860px) {
+    .shopping-columns { grid-template-columns: minmax(0, 1fr); }
+}
+
+.shopping-column h3 { margin: 16px 0 8px; }
+.shopping-column h3:first-child { margin-top: 0; }
+
+.shopping-stockpiles {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.shopping-stockpiles label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 16px;
+    cursor: pointer;
+}
+
+.shopping-stockpiles label:hover { background: var(--ink-soft); }
+
+.shopping-stockpiles input { margin: 0; align-self: center; }
+
+.shopping-stockpiles .stockpile-name { font-weight: 600; }
+
+/* The copy button sits centered on top of its table. */
+.copy-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.shopping-table .icon-col {
+    width: 48px;
+    padding-right: 0;
+}
+
+.shopping-table td.icon-col img {
+    display: block;
+    border-radius: 4px;
+}
+
+.shopping-table td { vertical-align: middle; }
+
+.shopping-table tr.bad-row td {
+    color: var(--bad);
+    font-weight: 600;
+}
+
+.shopping-form .actions { margin: 0 0 8px; }
+
+/* Tall enough for about 12 lines before it scrolls. */
+.shopping-form textarea {
+    display: block;
+    width: 100%;
+    height: calc(12 * 1.5em + 20px);
+    min-height: 120px;
+    padding: 10px 12px;
+    font: 14px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    resize: vertical;
+    margin-bottom: 16px;
+}
+
+.shopping-form textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

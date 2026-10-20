@@ -137,6 +137,11 @@ func main() {
 	http.HandleFunc("/stockpiles/counts", auth.RequireAuth(handleStockpileCounts))
 	http.HandleFunc("/stockpiles/item-suggestions", auth.RequireAuth(handleItemSuggestions))
 	http.HandleFunc("/stockpiles/structure-suggestions", auth.RequireAuth(handleStructureSuggestions))
+	http.HandleFunc("/shopping", auth.RequireAuth(renderShoppingList))
+	http.HandleFunc("/shopping/missing", auth.RequireAuth(handleShoppingMissing))
+	http.HandleFunc("/shopping/parse", auth.RequireAuth(handleShoppingParse))
+	http.HandleFunc("/shopping/save", auth.RequireAuth(handleSaveShoppingList))
+	http.HandleFunc("/shopping/clear", auth.RequireAuth(handleClearShoppingList))
 	http.HandleFunc("/worth", auth.RequireAuth(renderMyWorth))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)

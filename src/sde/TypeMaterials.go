@@ -71,6 +71,7 @@ type sdeData struct {
 	onMarket   map[int64]bool   // types that can be bought and sold on the market
 	items      map[int64]*Item  // published types, for item search
 	sorted     []*Item          // items by lowercase name
+	byName     map[string]*Item // items by lowercase name
 	blueprints map[int64]Blueprint
 	groups     map[int64]Group
 	categories map[int64]string

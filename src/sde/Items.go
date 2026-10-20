@@ -19,9 +19,10 @@ type Item struct {
 	lower string
 }
 
-// indexItems lists the published types for Get and Search. It needs the
-// groups loaded first, to tell blueprints apart.
+// indexItems lists the published types for Get, Find and Search. It needs
+// the groups loaded first, to tell blueprints apart.
 func (data *sdeData) indexItems(types map[int64]TypeInfo) {
+	data.byName = make(map[string]*Item, len(types))
 	for typeID, info := range types {
 		if !info.Published || info.Name == "" {
 			continue
@@ -30,6 +31,9 @@ func (data *sdeData) indexItems(types map[int64]TypeInfo) {
 			IsBlueprint: data.groups[info.GroupID].CategoryID == blueprintCategoryID}
 		data.items[typeID] = item
 		data.sorted = append(data.sorted, item)
+		if other, taken := data.byName[item.lower]; !taken || item.ID < other.ID {
+			data.byName[item.lower] = item
+		}
 	}
 	sort.Slice(data.sorted, func(i, j int) bool { return data.sorted[i].lower < data.sorted[j].lower })
 }
@@ -40,6 +44,18 @@ func Get(typeID int64) (Item, bool) {
 	mu.Lock()
 	defer mu.Unlock()
 	item, ok := loaded.items[typeID]
+	if !ok {
+		return Item{}, false
+	}
+	return *item, true
+}
+
+// Find returns the published type with that name, ignoring case and
+// surrounding spaces, and false when there's none.
+func Find(name string) (Item, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	item, ok := loaded.byName[strings.ToLower(strings.TrimSpace(name))]
 	if !ok {
 		return Item{}, false
 	}

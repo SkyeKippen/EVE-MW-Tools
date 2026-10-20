@@ -148,6 +148,19 @@ header.banner nav a {
     font-weight: 500;
     padding: 6px 12px;
     border-radius: var(--radius);
+    white-space: nowrap;
+}
+
+/* On narrow screens the nav wraps onto more lines under the brand. */
+@media (max-width: 1000px) {
+    .banner-inner {
+        height: auto;
+        min-height: 56px;
+        padding: 10px 0;
+        flex-wrap: wrap;
+    }
+
+    header.banner nav { flex-wrap: wrap; }
 }
 
 header.banner nav a:hover {

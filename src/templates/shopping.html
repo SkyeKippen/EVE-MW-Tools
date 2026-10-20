@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+    <link rel="stylesheet" href="{{static "shopping.css"}}">
+</head>
+<body>
+
+{{template "header" "shopping"}}
+
+<main class="page">
+    <div class="page-head">
+        <h2>Shopping List</h2>
+        <p class="muted">Tick stockpiles to list what they're missing, or paste a Multibuy list to check it. Each table copies out in Multibuy format.</p>
+    </div>
+
+    {{if .Message}}<p class="notice notice-good" role="status">{{.Message}}</p>{{end}}
+    {{if .Error}}<p class="notice notice-bad" role="alert">{{.Error}}</p>{{end}}
+
+    <div class="shopping-columns">
+        <section class="shopping-column" aria-labelledby="stockpiles-heading">
+            <h3 id="stockpiles-heading">Stockpiles</h3>
+            {{if .Stockpiles}}
+            <ul class="shopping-stockpiles card">
+                {{range .Stockpiles}}
+                <li>
+                    <label>
+                        <input type="checkbox" class="stockpile-check" value="{{.StockpileId}}">
+                        <span class="stockpile-name">{{.Name}}</span>
+                        <span class="unit">{{.Place.Name}}</span>
+                    </label>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p class="card muted">No stockpiles yet. Make one on the <a href="/stockpiles">Stockpiles</a> page.</p>
+            {{end}}
+
+            <h3>Missing from checked stockpiles</h3>
+            <div class="copy-row">
+                <button class="btn btn-secondary btn-sm" type="button" data-copy="missing-table">Copy to clipboard</button>
+            </div>
+            <div class="table-wrap">
+                <table id="missing-table" class="shopping-table">
+                    <thead>
+                        <tr><th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="3" class="empty">Tick a stockpile to see what it's missing.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="shopping-column" aria-labelledby="pasted-heading">
+            <h3 id="pasted-heading">Multibuy list</h3>
+            <form method="post" action="/shopping/save" class="shopping-form">
+                <div class="actions">
+                    <button class="btn btn-primary" type="submit">Save List</button>
+                    <button class="btn btn-bad" type="submit" formaction="/shopping/clear" formnovalidate>Clear Cached List</button>
+                </div>
+                <label class="visually-hidden" for="multibuy">Multibuy list</label>
+                <textarea id="multibuy" name="list" rows="12" spellcheck="false"
+                          placeholder="One item a line, like&#10;Tritanium 100000&#10;Cadmium 2,000">{{.SavedList}}</textarea>
+            </form>
+
+            <div class="copy-row">
+                <button class="btn btn-secondary btn-sm" type="button" data-copy="pasted-table">Copy to clipboard</button>
+            </div>
+            <div class="table-wrap">
+                <table id="pasted-table" class="shopping-table">
+                    <thead>
+                        <tr><th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="3" class="empty">Paste a list above to check it.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+
+{{template "footer"}}
+<script src="{{static "shopping.js"}}"></script>
+</body>
+</html>

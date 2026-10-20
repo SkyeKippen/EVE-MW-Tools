@@ -19,4 +19,5 @@
 \ir generate_jita_sell_prices_table.sql
 \ir generate_places_table.sql
 \ir generate_stockpiles_tables.sql
+\ir generate_shopping_lists_table.sql
 \ir generate_networth_snapshots_table.sql

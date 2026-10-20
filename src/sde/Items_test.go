@@ -25,6 +25,12 @@ func TestSearch(t *testing.T) {
 	if found, _ := Search("ri", true, 10); len(found) != 1 || !found[0].IsBlueprint {
 		t.Errorf("blueprint search = %v", found)
 	}
+	if item, ok := Find("  tritanium "); !ok || item.ID != 34 {
+		t.Errorf("Find tritanium = %v, %v", item, ok)
+	}
+	if _, ok := Find("Tritanium Test"); ok {
+		t.Error("Find found an unpublished type")
+	}
 	if item, ok := Get(688); !ok || item.BasePrice != 285000 || TypeName(99) != "" {
 		t.Errorf("Get = %v, %v", item, ok)
 	}
