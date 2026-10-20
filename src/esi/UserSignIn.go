@@ -19,8 +19,15 @@ const (
 	TokenURL         = "https://login.eveonline.com/v2/oauth/token"
 	RevokeURL        = "https://login.eveonline.com/v2/oauth/revoke"
 
-	// sent on every ESI and SSO request so CCP can identify and contact us
-	UserAgent = "Meadow-Works Tools (admin contact: skyemeadows20@gmail.com)"
+	// AppVersion is the version sent in UserAgent; raise it with a release.
+	AppVersion = "1.0.0"
+
+	// UserAgent goes on every request to CCP (ESI, SSO, the image server and
+	// the SDE download) so they can tell which app is calling and contact its
+	// admin, in the format CCP's ESI best practices ask for:
+	// AppName/version (email; +website). A product name can't hold a space,
+	// so the app's name is hyphenated here.
+	UserAgent = "Meadow-Works-Tools/" + AppVersion + " (skyemeadows20@gmail.com; +https://tools.meadowworks.space)"
 )
 
 type Config struct {

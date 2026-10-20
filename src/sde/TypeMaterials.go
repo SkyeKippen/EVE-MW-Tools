@@ -6,6 +6,7 @@
 package sde
 
 import (
+	"MeadowWorksTools/src/esi"
 	"archive/zip"
 	"bufio"
 	"context"
@@ -465,6 +466,7 @@ func download(ctx context.Context, url string, dests []string) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("User-Agent", esi.UserAgent)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
