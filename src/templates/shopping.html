@@ -11,7 +11,7 @@
 <main class="page">
     <div class="page-head">
         <h2>Shopping List</h2>
-        <p class="muted">Tick stockpiles to list what they're missing, or paste a Multibuy list to check it. Each table copies out in Multibuy format.</p>
+        <p class="muted">Tick stockpiles to list what they're missing, or paste a Multibuy list to check it. Each table copies out in Multibuy format. Prices are Jita sell, as on the Stockpiles page.</p>
     </div>
 
     {{if .Message}}<p class="notice notice-good" role="status">{{.Message}}</p>{{end}}
@@ -43,10 +43,11 @@
             <div class="table-wrap">
                 <table id="missing-table" class="shopping-table">
                     <thead>
-                        <tr><th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th></tr>
+                        <tr><th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th></tr>
+                        <tr class="shopping-total"><th colspan="3">Total</th><th class="num total-price"><span class="muted">—</span></th></tr>
                     </thead>
                     <tbody>
-                        <tr><td colspan="3" class="empty">Tick a stockpile to see what it's missing.</td></tr>
+                        <tr><td colspan="4" class="empty">Tick a stockpile to see what it's missing.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -70,10 +71,11 @@
             <div class="table-wrap">
                 <table id="pasted-table" class="shopping-table">
                     <thead>
-                        <tr><th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th></tr>
+                        <tr><th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th></tr>
+                        <tr class="shopping-total"><th colspan="3">Total</th><th class="num total-price"><span class="muted">—</span></th></tr>
                     </thead>
                     <tbody>
-                        <tr><td colspan="3" class="empty">Paste a list above to check it.</td></tr>
+                        <tr><td colspan="4" class="empty">Paste a list above to check it.</td></tr>
                     </tbody>
                 </table>
             </div>

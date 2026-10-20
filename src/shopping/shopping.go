@@ -27,8 +27,11 @@ type Line struct {
 	Bad       bool   `json:"bad"`
 	Text      string `json:"text,omitempty"`
 	Blueprint bool   `json:"blueprint,omitempty"`
-	Category  string `json:"-"`
-	Group     string `json:"-"`
+	// Price is the line's quantity at the Jita sell price, or nil when the
+	// item has no price.
+	Price    *float64 `json:"price"`
+	Category string   `json:"-"`
+	Group    string   `json:"-"`
 }
 
 // Parse reads a list in EVE's Multibuy format, one item a line, as
@@ -154,4 +157,26 @@ func Missing(list []stockpile.Stockpile, selected map[int64]bool, counts map[str
 
 func countKey(stockpileID, typeID int64) string {
 	return fmt.Sprintf("%d-%d", stockpileID, typeID)
+}
+
+// SetPrices prices each good line at its item's Jita sell price, from
+// prices keyed by type ID. Lines whose item has no price are left nil.
+func SetPrices(lines []Line, prices map[int64]float64) {
+	for i := range lines {
+		if price, ok := prices[lines[i].TypeID]; ok && !lines[i].Bad {
+			total := price * float64(lines[i].Quantity)
+			lines[i].Price = &total
+		}
+	}
+}
+
+// TypeIDs returns the type IDs of the good lines.
+func TypeIDs(lines []Line) []int64 {
+	ids := make([]int64, 0, len(lines))
+	for _, line := range lines {
+		if !line.Bad {
+			ids = append(ids, line.TypeID)
+		}
+	}
+	return ids
 }

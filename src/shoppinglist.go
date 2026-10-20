@@ -113,7 +113,7 @@ func handleClearShoppingList(w http.ResponseWriter, r *http.Request) {
 
 // handleShoppingMissing returns, as JSON rows, what the stockpiles in
 // ?ids=1,2,3 are missing, added up by item, from the assets the hourly
-// refresh saved.
+// refresh saved, priced at Jita sell as the Stockpiles page prices them.
 func handleShoppingMissing(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 	selected := map[int64]bool{}
@@ -150,13 +150,15 @@ func handleShoppingMissing(w http.ResponseWriter, r *http.Request) {
 			}
 			lines = append(lines, shopping.Line{TypeID: typeID, Name: t.Name, Quantity: quantity, Category: t.Category, Group: t.Group, Blueprint: t.Blueprint})
 		}
+		shopping.SetPrices(lines, counts.Prices)
 		shopping.Sort(lines)
 	}
 	writeJSON(w, lines)
 }
 
 // handleShoppingParse returns, as JSON rows, the Multibuy list posted as
-// "list", with lines that name no item marked bad.
+// "list", with lines that name no item marked bad, priced at Jita sell as
+// the Stockpiles page prices them.
 func handleShoppingParse(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -171,6 +173,16 @@ func handleShoppingParse(w http.ResponseWriter, r *http.Request) {
 	if lines == nil {
 		lines = []shopping.Line{}
 	}
+	prices, err := db.LoadLatestJitaPrices(r.Context(), shopping.TypeIDs(lines))
+	if err != nil {
+		if r.Context().Err() != nil {
+			return // the page was closed or the list changed again
+		}
+		log.Printf("handleShoppingParse: %v", err)
+		http.Error(w, "could not load prices", http.StatusInternalServerError)
+		return
+	}
+	shopping.SetPrices(lines, prices)
 	writeJSON(w, lines)
 }
 

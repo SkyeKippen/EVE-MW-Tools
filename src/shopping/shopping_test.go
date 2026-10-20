@@ -70,3 +70,14 @@ func TestMissing(t *testing.T) {
 		t.Errorf("Missing = %v, want %v", got, want)
 	}
 }
+
+func TestSetPrices(t *testing.T) {
+	lines := []Line{{TypeID: 34, Quantity: 1000}, {TypeID: 35, Quantity: 5}, {Name: "x", Bad: true}}
+	SetPrices(lines, map[int64]float64{34: 4.5, 0: 99})
+	if lines[0].Price == nil || *lines[0].Price != 4500 || lines[1].Price != nil || lines[2].Price != nil {
+		t.Errorf("SetPrices = %+v", lines)
+	}
+	if ids := TypeIDs(lines); !reflect.DeepEqual(ids, []int64{34, 35}) {
+		t.Errorf("TypeIDs = %v", ids)
+	}
+}

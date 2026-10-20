@@ -13,15 +13,59 @@
         body.replaceChildren();
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 3;
+        td.colSpan = 4;
         td.className = "empty";
         td.textContent = text;
         tr.appendChild(td);
         body.appendChild(tr);
     }
 
+    // 1234567890 -> "1.23b", as on the Stockpiles page
+    function shortIsk(v) {
+        const units = [[1e12, "t"], [1e9, "b"], [1e6, "m"], [1e3, "k"]];
+        for (const [size, suffix] of units) {
+            if (Math.abs(v) >= size) return (v / size).toFixed(2) + suffix;
+        }
+        return v.toFixed(2);
+    }
+
+    // Shows an ISK value, or a dash with emptyTitle when value is null.
+    function showIsk(cell, value, emptyTitle) {
+        if (value === null) {
+            const dash = document.createElement("span");
+            dash.className = "muted";
+            dash.textContent = "—";
+            cell.replaceChildren(dash);
+            cell.title = emptyTitle;
+            return;
+        }
+        cell.textContent = shortIsk(value) + " ";
+        const unit = document.createElement("span");
+        unit.className = "unit";
+        unit.textContent = "ISK";
+        cell.appendChild(unit);
+        cell.title = value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ISK";
+    }
+
+    // The total at the top of a table adds up the priced rows, and says in
+    // its tooltip how many rows it leaves out.
+    function showTotal(body, rows) {
+        const cell = body.closest("table").querySelector(".total-price");
+        const priced = rows.filter(function (row) { return typeof row.price === "number"; });
+        if (priced.length === 0) {
+            showIsk(cell, null, rows.length ? "None of these items has a Jita price" : "");
+            return;
+        }
+        showIsk(cell, priced.reduce(function (sum, row) { return sum + row.price; }, 0), "");
+        const left = rows.length - priced.length;
+        if (left > 0) {
+            cell.title += " (leaves out " + left + (left === 1 ? " row" : " rows") + " with no price)";
+        }
+    }
+
     function fill(tableId, body, rows, emptyText) {
         rowsByTable[tableId] = rows;
+        showTotal(body, rows);
         if (rows.length === 0) {
             message(body, emptyText);
             return;
@@ -34,6 +78,8 @@
             const name = document.createElement("td");
             const quantity = document.createElement("td");
             quantity.className = "num";
+            const price = document.createElement("td");
+            price.className = "num";
             if (row.bad) {
                 tr.className = "bad-row";
                 tr.title = row.text;
@@ -50,8 +96,9 @@
                 icon.appendChild(img);
                 name.textContent = row.name;
                 quantity.textContent = row.quantity.toLocaleString("en-US", { maximumFractionDigits: 0 });
+                showIsk(price, typeof row.price === "number" ? row.price : null, "No Jita price saved for this item");
             }
-            tr.append(icon, name, quantity);
+            tr.append(icon, name, quantity, price);
             body.appendChild(tr);
         });
     }
@@ -82,6 +129,7 @@
             .catch(function () {
                 if (request !== missingRequest) return;
                 rowsByTable["missing-table"] = [];
+                showTotal(missingBody, []);
                 message(missingBody, "Couldn't load what's missing. Reload the page to try again.");
             });
     }
@@ -110,6 +158,7 @@
             .catch(function () {
                 if (request !== parseRequest) return;
                 rowsByTable["pasted-table"] = [];
+                showTotal(pastedBody, []);
                 message(pastedBody, "Couldn't check the list. Reload the page to try again.");
             });
     }
