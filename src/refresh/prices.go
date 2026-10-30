@@ -14,8 +14,10 @@ import (
 
 // OreRecipes works out what one unit of each ore refines into, keyed by the
 // ore's type ID: its base ore's refine materials from the SDE, with the
-// grade bonus added. Ores whose base can't be refined, such as gas, are left
-// out. It reads only the SDE.
+// grade bonus added. Something mined that can't be refined, such as gas, is
+// valued as itself: its recipe is one unit of its own type, so it gets its
+// own Jita sell price. Types that neither refine nor trade on the market are
+// left out. It reads only the SDE.
 func OreRecipes(oreTypes map[int64]string) (map[int64]mining.Recipe, error) {
 	materials, err := sde.Materials()
 	if err != nil {
@@ -25,6 +27,9 @@ func OreRecipes(oreTypes map[int64]string) (map[int64]mining.Recipe, error) {
 	for typeID, name := range oreTypes {
 		baseID, ok := sde.TypeIDByName(mining.BaseOreName(name))
 		if !ok || len(materials[baseID]) == 0 {
+			if len(materials[typeID]) == 0 && sde.OnMarket(typeID) {
+				recipes[typeID] = mining.Recipe{typeID: 1}
+			}
 			continue
 		}
 		quantities := make(map[int64]int64, len(materials[baseID]))

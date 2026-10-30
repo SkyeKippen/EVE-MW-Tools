@@ -85,7 +85,8 @@ var (
 )
 
 // Materials returns what each type refines into, per portion, keyed by type
-// ID. Types that can't be refined, such as gas, aren't in it.
+// ID. Types that can't be refined, such as gas, aren't in it; the Mining
+// page values those at their own Jita price.
 func Materials() (map[int64][]Material, error) {
 	mu.Lock()
 	defer mu.Unlock()

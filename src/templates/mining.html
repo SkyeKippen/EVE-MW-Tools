@@ -11,7 +11,7 @@
     <div class="page-head">
         <h2>Mining</h2>
         <p class="muted">Ore mined by your characters since Meadow-Works Tools started saving their mining ledgers, updated every hour. Graded variants count as their base ore.
-            Value is what the ore refines into (at the max refining yield of 90.628%, with the +5/10/15% bonus for II/III/IV-Grade) at Jita sell prices on the day it was mined, or the closest day with saved prices.</p>
+            Value is what the ore refines into (at the max refining yield of 90.628%, with the +5/10/15% bonus for II/III/IV-Grade) at Jita sell prices on the day it was mined, or the closest day with saved prices. Gas, which doesn't refine, is valued at its own Jita sell price.</p>
     </div>
 
     {{range .Characters}}{{if .Problem}}
@@ -19,7 +19,7 @@
     {{end}}{{end}}
 
     {{if .ValueProblem}}<p class="muted">Ore values aren't shown: {{.ValueProblem}}.</p>{{end}}
-    {{if .Unpriced}}<p class="muted">{{commaInt .Unpriced}} units couldn't be valued, because they don't refine (e.g. gas) or a material has no Jita price yet; values marked * leave them out.</p>{{end}}
+    {{if .Unpriced}}<p class="muted">{{commaInt .Unpriced}} units couldn't be valued, because they have no Jita price yet or something they refine into doesn't; values marked * leave them out.</p>{{end}}
 
     {{template "tracking-for" .TrackingDays}}
 
