@@ -35,9 +35,7 @@ var optionalScopes = []ScopeChoice{
 	{Scope: "esi-markets.read_corporation_orders.v1", Label: "Corporation market orders"},
 	{Scope: "esi-corporations.read_divisions.v1", Label: "Corporation divisions"},
 	{Scope: "esi-universe.read_structures.v1", Label: "Structures"},
-	{Scope: "esi-markets.structure_markets.v1", Label: "Structure markets",
-		Description: "Reads the C-J6MT Keepstar's market once a day for the Import and Prices pages.",
-		Note:        "The character needs docking access there."},
+	{Scope: "esi-markets.structure_markets.v1", Label: "Structure markets"},
 }
 
 // chosenParam marks a sign-in that came from the scope picker, so an empty
