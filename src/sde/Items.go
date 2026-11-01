@@ -119,3 +119,30 @@ func Search(query string, blueprintsOnly bool, limit int) ([]Item, error) {
 	}
 	return out, nil
 }
+
+// shipCategoryID is the SDE category of ships.
+const shipCategoryID = 6
+
+// MarketShips returns the type IDs of every ship that can be traded on the
+// market, sorted. Ships are hauled packaged, which is much smaller than the
+// SDE's assembled volume.
+func MarketShips() []int64 {
+	mu.Lock()
+	defer mu.Unlock()
+	var ids []int64
+	for typeID, groupID := range loaded.typeGroups {
+		if loaded.groups[groupID].CategoryID == shipCategoryID && loaded.onMarket[typeID] {
+			ids = append(ids, typeID)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return ids
+}
+
+// IsShip reports whether the type is a ship.
+func IsShip(typeID int64) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	groupID, ok := loaded.typeGroups[typeID]
+	return ok && loaded.groups[groupID].CategoryID == shipCategoryID
+}

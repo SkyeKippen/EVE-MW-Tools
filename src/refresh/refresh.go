@@ -29,6 +29,7 @@ const (
 	ScopeCorporationMining = "esi-industry.read_corporation_mining.v1"
 	ScopeCorporationOrders = "esi-markets.read_corporation_orders.v1"
 	ScopeStructures        = "esi-universe.read_structures.v1"
+	ScopeStructureMarkets  = "esi-markets.structure_markets.v1"
 )
 
 // corporations have seven wallet divisions

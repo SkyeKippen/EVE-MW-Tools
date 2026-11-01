@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+    <link rel="stylesheet" href="{{static "shopping.css"}}">
+    <link rel="stylesheet" href="{{static "market.css"}}">
+</head>
+<body>
+
+{{template "header" "import"}}
+
+<main class="page">
+    <div class="page-head">
+        <h2>Import Calculator</h2>
+        <p class="muted">Paste a fit copied from the fitting window, or a Multibuy list, to see what it costs bought in Jita and hauled to C-J6MT against buying it in the C-J6MT Keepstar. Prices are sell prices from the daily refresh; ships are hauled packaged.</p>
+    </div>
+
+    {{if .Error}}<p class="notice notice-bad" role="alert">{{.Error}}</p>{{end}}
+
+    <form method="post" action="/import" class="card form import-form">
+        <label for="import-text">Fit or Multibuy list</label>
+        <textarea id="import-text" name="text" rows="14" spellcheck="false" required
+                  placeholder="[Drake, My Drake]&#10;Ballistic Control System II&#10;...&#10;&#10;or one item a line, like Tritanium 1000">{{.Text}}</textarea>
+        <div class="import-options">
+            <div>
+                <label for="import-batch">Copies</label>
+                <input type="number" id="import-batch" name="batch" min="1" max="10000" step="1" value="{{.Batch}}">
+            </div>
+            <div>
+                <label for="import-shipping">Shipping (ISK per m³)</label>
+                <input type="number" id="import-shipping" name="shipping" min="0" step="any" value="{{.Shipping}}">
+            </div>
+            <div class="import-hull">
+                <input type="checkbox" id="import-hull" class="switch-input" name="include_hull" value="1"{{if .IncludeHull}} checked{{end}}>
+                <label class="switch-row" for="import-hull"><span class="switch"></span><span>Include the hull</span></label>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Calculate</button>
+        </div>
+    </form>
+
+    {{if and .Posted (not .Error)}}
+    {{$r := .Result}}
+    <p class="muted market-dates">
+        {{.Jita.Name}} prices: {{if .Jita.Date.IsZero}}none saved yet{{else}}{{.Jita.Date.Format "2 Jan 2006"}}{{end}}.
+        {{.CJ.Name}} prices: {{if .CJ.Date.IsZero}}none saved yet. They need a character who granted Structure markets and can dock there{{else}}{{.CJ.Date.Format "2 Jan 2006"}}{{end}}.
+        {{if .Hull}}Fit for a {{.Hull}}{{if gt .Batch 1}}, ×{{.Batch}}{{end}}.{{end}}
+    </p>
+
+    <div class="stat-grid">
+        <div class="card stat"><span class="stat-label">Bought in Jita and hauled</span><strong>{{isk $r.LandedTotal}} ISK</strong>
+            <span class="unit">{{isk $r.JitaTotal}} + {{isk $r.HaulTotal}} hauling{{if $r.MissingJita}}; {{$r.MissingJita}} item(s) not in Jita{{end}}</span></div>
+        <div class="card stat"><span class="stat-label">Bought in C-J6MT</span><strong>{{isk $r.CJTotal}} ISK</strong>
+            <span class="unit">{{if $r.MissingCJ}}{{$r.MissingCJ}} item(s) not in C-J6MT{{else}}everything is there{{end}}</span></div>
+        <div class="card stat stat-best"><span class="stat-label">Cheapest mix</span><strong>{{isk $r.BestTotal}} ISK</strong>
+            <span class="unit">{{isk $r.JitaVolume}} m³ to haul, {{isk $r.BestHaul}} ISK{{if $r.Unpriced}}; {{$r.Unpriced}} item(s) priced nowhere{{end}}</span></div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="shopping-table import-table">
+            <thead>
+                <tr>
+                    <th class="icon-col"><span class="visually-hidden">Icon</span></th><th>Item</th><th class="num">Quantity</th>
+                    <th class="num">Jita each</th><th class="num">Hauling each</th><th class="num">Landed each</th>
+                    <th class="num">C-J6MT each</th><th class="num">m³</th><th>Buy in</th><th class="num">Cost</th><th class="num">Saving</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $r.Items}}
+                <tr>
+                    <td class="icon-col"><img src="/image?category=types&id={{.TypeID}}&variation={{if .Blueprint}}bp{{else}}icon{{end}}&size=32" alt="" width="32" height="32" loading="lazy"></td>
+                    <td>{{.Name}}</td>
+                    <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{if .Jita}}{{price (deref .Jita)}}{{else}}<span class="muted">—</span>{{end}}</td>
+                    <td class="num">{{price .Haul}}</td>
+                    <td class="num">{{if .Landed}}{{price (deref .Landed)}}{{else}}<span class="muted">—</span>{{end}}</td>
+                    <td class="num">{{if .CJ}}{{price (deref .CJ)}}{{else}}<span class="muted">—</span>{{end}}</td>
+                    <td class="num">{{m3 .TotalVol}}</td>
+                    <td>{{if eq .BuyAt "jita"}}<span class="buy-at buy-jita">Jita</span>{{else if eq .BuyAt "cj"}}<span class="buy-at buy-cj">C-J6MT</span>{{else}}<span class="muted">No price</span>{{end}}</td>
+                    <td class="num">{{if .BuyAt}}{{isk .Best}}{{else}}<span class="muted">—</span>{{end}}</td>
+                    <td class="num">{{if .Saving}}{{isk .Saving}}{{else}}<span class="muted">—</span>{{end}}</td>
+                </tr>
+                {{else}}
+                <tr><td colspan="11" class="empty">No items found in what was pasted.</td></tr>
+                {{end}}
+                {{range $r.Bad}}
+                <tr class="bad-row"><td class="icon-col"></td><td colspan="10">Not an item: {{.Text}}</td></tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="shopping-columns">
+        <section class="shopping-column">
+            <h3>Buy in Jita</h3>
+            <div class="copy-row"><button class="btn btn-secondary btn-sm" type="button" data-copy-text="jita-list"{{if not $r.JitaList}} disabled{{end}}>Copy Multibuy list</button></div>
+            <textarea id="jita-list" class="multibuy-out" rows="8" readonly spellcheck="false">{{$r.JitaList}}</textarea>
+        </section>
+        <section class="shopping-column">
+            <h3>Buy in C-J6MT</h3>
+            <div class="copy-row"><button class="btn btn-secondary btn-sm" type="button" data-copy-text="cj-list"{{if not $r.CJList}} disabled{{end}}>Copy Multibuy list</button></div>
+            <textarea id="cj-list" class="multibuy-out" rows="8" readonly spellcheck="false">{{$r.CJList}}</textarea>
+        </section>
+    </div>
+    {{end}}
+</main>
+
+{{template "footer"}}
+<script src="{{static "market.js"}}"></script>
+</body>
+</html>

@@ -34,6 +34,24 @@ func isk(amount float64) string {
 	return commaInt(int64(math.Round(amount)))
 }
 
+// price shows a unit price: to two decimal places under 1,000 ISK, where
+// the decimals matter, else like isk.
+func price(amount float64) string {
+	if math.Abs(amount) >= 1000 {
+		return isk(amount)
+	}
+	whole := math.Trunc(amount)
+	cents := math.Round(math.Abs(amount-whole) * 100)
+	if cents == 100 {
+		whole, cents = whole+math.Copysign(1, amount), 0
+	}
+	sign := ""
+	if amount < 0 && whole == 0 {
+		sign = "-"
+	}
+	return fmt.Sprintf("%s%s.%02d", sign, commaInt(int64(whole)), int64(cents))
+}
+
 // percent shows a share to one decimal place, e.g. 42.5%.
 func percent(share float64) string {
 	return fmt.Sprintf("%.1f%%", share)
@@ -73,9 +91,11 @@ func static(name string) string {
 var tmpl = template.Must(
 	template.New("").Funcs(template.FuncMap{
 		"commaInt": commaInt,
+		"deref":    func(p *float64) float64 { return *p },
 		"isk":      isk,
 		"m3":       isk,
 		"percent":  percent,
+		"price":    price,
 		"static":   static,
 	}).ParseGlob("src/templates/*.html"),
 )
@@ -145,6 +165,8 @@ func main() {
 	http.HandleFunc("/shopping/save", auth.RequireAuth(handleSaveShoppingList))
 	http.HandleFunc("/shopping/clear", auth.RequireAuth(handleClearShoppingList))
 	http.HandleFunc("/worth", auth.RequireAuth(renderMyWorth))
+	http.HandleFunc("/import", auth.RequireAuth(renderImport))
+	http.HandleFunc("/prices", auth.RequireAuth(renderPrices))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)

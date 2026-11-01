@@ -6,8 +6,6 @@ package prices
 import (
 	"MeadowWorksTools/src/esi"
 	"cmp"
-	"context"
-	"fmt"
 	"math"
 	"slices"
 )
@@ -34,26 +32,6 @@ type Price struct {
 	MinPrice   float64
 	Volume     int64 // units for sale
 	OrderCount int
-}
-
-// FetchJita prices every item with sell orders in Jita 4-4, plus PLEX from
-// its global market, capped at averageCap times CCP's average price.
-func FetchJita(ctx context.Context, client *esi.Client) ([]Price, error) {
-	forge, err := client.GetRegionSellOrders(ctx, TheForgeRegionId)
-	if err != nil {
-		return nil, fmt.Errorf("fetching The Forge sell orders: %w", err)
-	}
-	jita := slices.DeleteFunc(forge, func(o esi.RegionOrder) bool { return o.LocationId != Jita44StationId })
-
-	plex, err := client.GetRegionSellOrders(ctx, PlexRegionId)
-	if err != nil {
-		return nil, fmt.Errorf("fetching PLEX sell orders: %w", err)
-	}
-	averages, err := client.GetAveragePrices(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetching average prices: %w", err)
-	}
-	return CapAtAverage(SellPrices(append(jita, plex...)), averages), nil
 }
 
 // CapAtAverage caps each price at averageCap times the type's average traded
@@ -94,31 +72,7 @@ func SellPrices(orders []esi.RegionOrder) []Price {
 	prices := make([]Price, 0, len(byType))
 	for typeId, typeOrders := range byType {
 		slices.SortFunc(typeOrders, func(a, b esi.RegionOrder) int { return cmp.Compare(a.Price, b.Price) })
-
-		var volume int64
-		for _, o := range typeOrders {
-			volume += o.VolumeRemain
-		}
-		target := max(1, int64(math.Ceil(float64(volume)*cheapestShare)))
-
-		var counted int64
-		var total float64
-		for _, o := range typeOrders {
-			take := min(o.VolumeRemain, target-counted)
-			total += float64(take) * o.Price
-			counted += take
-			if counted >= target {
-				break
-			}
-		}
-
-		prices = append(prices, Price{
-			TypeId:     typeId,
-			SellPrice:  math.Round(total/float64(counted)*100) / 100,
-			MinPrice:   typeOrders[0].Price,
-			Volume:     volume,
-			OrderCount: len(typeOrders),
-		})
+		prices = append(prices, topShare(typeId, typeOrders))
 	}
 	slices.SortFunc(prices, func(a, b Price) int { return cmp.Compare(a.TypeId, b.TypeId) })
 	return prices

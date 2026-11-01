@@ -1,0 +1,73 @@
+/* Import and Prices pages. */
+.import-form textarea,
+.multibuy-out {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    resize: vertical;
+}
+
+.import-form textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.import-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    align-items: end;
+    margin-top: 12px;
+}
+
+.import-form .import-hull .switch-row { display: inline-flex; margin: 0 0 8px; }
+
+@media (max-width: 700px) {
+    .import-options { grid-template-columns: minmax(0, 1fr); }
+}
+
+.market-dates { margin: 16px 0; }
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.stat { display: flex; flex-direction: column; gap: 4px; }
+.stat strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat-label .unit { margin-left: 6px; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.stat-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.stat-best strong { color: var(--highlight); }
+
+.buy-at { font-weight: 600; }
+.buy-jita { color: var(--accent); }
+.buy-cj { color: var(--good); }
+
+.multibuy-out { min-height: 120px; }
+
+.price-search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.price-title { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
+.price-title img { border-radius: 4px; }
+.price-title h3 { margin: 0; }
+
+.price-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.price-pair > div { display: flex; flex-direction: column; gap: 2px; }
+
+.range-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.range-row .btn { text-decoration: none; }
+
+.price-chart { position: relative; height: 380px; }
+.chart-note { margin: 8px 0 0; font-size: 12px; }

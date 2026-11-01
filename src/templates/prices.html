@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+    <link rel="stylesheet" href="{{static "market.css"}}">
+</head>
+<body>
+
+{{template "header" "prices"}}
+
+<main class="page">
+    <div class="page-head">
+        <h2>Prices</h2>
+        <p class="muted">An item's buy and sell prices in Jita 4-4, the C-J6MT Keepstar and PLEX's market, saved once a day after downtime, with CCP's daily market history. Sell is the average of the cheapest 5% of units for sale, buy the average of the best-paying 5% wanted.</p>
+    </div>
+
+    <form method="get" action="/prices" class="card form price-search">
+        <label for="price-item">Item</label>
+        <div class="price-search-row">
+            <div class="autocomplete">
+                <input type="text" id="price-item" name="name" value="{{.Name}}" placeholder="Type 3 or more letters of the item name" required
+                       autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="price-item-suggestions"
+                       data-suggest="/stockpiles/item-suggestions" data-value-input="price-type-id">
+                <ul class="autocomplete-list" id="price-item-suggestions" role="listbox" hidden></ul>
+            </div>
+            <input type="hidden" id="price-type-id" name="type_id" value="{{if .TypeID}}{{.TypeID}}{{end}}">
+            <input type="hidden" name="days" value="{{.Days}}">
+            <button class="btn btn-primary" type="submit">Show</button>
+        </div>
+    </form>
+
+    {{if .Error}}<p class="notice notice-bad" role="alert">{{.Error}}</p>{{end}}
+
+    {{if .TypeID}}
+    <div class="price-title">
+        <img src="/image?category=types&id={{.TypeID}}&variation=icon&size=64" alt="" width="48" height="48">
+        <h3>{{.Name}}</h3>
+    </div>
+
+    <div class="stat-grid">
+        {{range .Markets}}
+        <div class="card stat">
+            <span class="stat-label">{{index $.MarketNames .Market}} <span class="unit">{{.Date.Format "2 Jan 2006"}}</span></span>
+            <div class="price-pair">
+                <div><span class="unit">Sell</span>{{if .HasSell}}<strong>{{price .Sell}}</strong><span class="unit">lowest {{price .MinSell}} · {{commaInt .SellVolume}} units</span>{{else}}<strong class="muted">—</strong>{{end}}</div>
+                <div><span class="unit">Buy</span>{{if .HasBuy}}<strong>{{price .Buy}}</strong><span class="unit">highest {{price .MaxBuy}} · {{commaInt .BuyVolume}} units</span>{{else}}<strong class="muted">—</strong>{{end}}</div>
+            </div>
+        </div>
+        {{end}}
+        {{range .Missing}}
+        <div class="card stat"><span class="stat-label">{{.}}</span><strong class="muted">No saved price</strong></div>
+        {{end}}
+    </div>
+
+    <div class="card">
+        <div class="range-row" role="group" aria-label="Chart period">
+            {{range .Ranges}}
+            <a class="btn btn-sm {{if eq .Days $.Days}}btn-primary{{else}}btn-secondary{{end}}" href="/prices?type_id={{$.TypeID}}&days={{.Days}}">{{.Label}}</a>
+            {{end}}
+        </div>
+        <div class="price-chart"><canvas id="price-chart" aria-label="{{.Name}} prices over time"></canvas></div>
+        <p class="muted chart-note">The average and volume traded are CCP's daily market history for {{.Region}}, from EVE Ref.</p>
+    </div>
+    <script id="price-data" type="application/json">{{.Chart}}</script>
+    {{end}}
+</main>
+
+{{template "footer"}}
+<script src="{{static "autocomplete.js"}}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{{static "market.js"}}"></script>
+</body>
+</html>

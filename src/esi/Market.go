@@ -21,12 +21,18 @@ type RegionOrder struct {
 // once. The Forge has a few hundred pages, which takes minutes one at a time.
 const regionOrderWorkers = 8
 
-// GetRegionSellOrders returns every sell order in the region. Orders move
-// between pages while they're fetched, so an order may show up twice; the
-// copies are dropped. No scope needed.
+// GetRegionSellOrders returns every sell order in the region. No scope
+// needed.
 func (c *Client) GetRegionSellOrders(ctx context.Context, regionId int64) ([]RegionOrder, error) {
+	return c.GetRegionOrders(ctx, regionId, "sell")
+}
+
+// GetRegionOrders returns the region's orders of orderType: "sell", "buy"
+// or "all". Orders move between pages while they're fetched, so an order may
+// show up twice; the copies are dropped. No scope needed.
+func (c *Client) GetRegionOrders(ctx context.Context, regionId int64, orderType string) ([]RegionOrder, error) {
 	pageUrl := func(page int) string {
-		return c.url("/markets/%d/orders?order_type=sell&page=%d", regionId, page)
+		return c.url("/markets/%d/orders?order_type=%s&page=%d", regionId, orderType, page)
 	}
 
 	var first []RegionOrder
@@ -83,7 +89,8 @@ feed:
 	var all []RegionOrder
 	for _, page := range results {
 		for _, order := range page {
-			if !order.IsBuyOrder && !seen[order.OrderId] {
+			wanted := orderType == "all" || order.IsBuyOrder == (orderType == "buy")
+			if wanted && !seen[order.OrderId] {
 				seen[order.OrderId] = true
 				all = append(all, order)
 			}
@@ -110,4 +117,32 @@ func (c *Client) GetAveragePrices(ctx context.Context) (map[int64]float64, error
 		}
 	}
 	return averages, nil
+}
+
+// GetStructureOrders returns every order in a player structure's market. It
+// needs esi-markets.structure_markets.v1 from a character on the
+// structure's access list; anyone else gets ErrForbidden.
+func (c *Client) GetStructureOrders(ctx context.Context, structureId int64, accessToken string) ([]RegionOrder, error) {
+	orders, err := getPages[RegionOrder](ctx, c, c.url("/markets/structures/%d", structureId), accessToken)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[int64]bool{}
+	unique := orders[:0]
+	for _, order := range orders {
+		if !seen[order.OrderId] {
+			seen[order.OrderId] = true
+			unique = append(unique, order)
+		}
+	}
+	return unique, nil
+}
+
+// GetPackagedVolume returns a type's volume when packaged, which for ships
+// is far smaller than assembled; 0 when ESI gives none. No scope needed.
+func (c *Client) GetPackagedVolume(ctx context.Context, typeId int64) (float64, error) {
+	info, err := get[struct {
+		PackagedVolume float64 `json:"packaged_volume"`
+	}](ctx, c, c.url("/universe/types/%d", typeId), "")
+	return info.PackagedVolume, err
 }
