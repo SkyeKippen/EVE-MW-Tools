@@ -4,6 +4,8 @@ import (
 	"MeadowWorksTools/src/auth"
 	"MeadowWorksTools/src/db"
 	"MeadowWorksTools/src/esi"
+	"MeadowWorksTools/src/history"
+	"MeadowWorksTools/src/refresh"
 	"MeadowWorksTools/src/sde"
 	"context"
 	"errors"
@@ -156,6 +158,12 @@ func main() {
 	// so saving everything hourly keeps the full history
 	refresher.SSO = auth.Config()
 	go refresher.Every(time.Hour)
+
+	// CCP's daily market history for every region, from EVE Ref; the first
+	// run imports the whole archive (8-10 GB), then it checks once a day
+	if os.Getenv("MARKET_HISTORY") != "off" {
+		go refresh.MarketHistoryDaily(&history.Client{UserAgent: esi.UserAgent})
+	}
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

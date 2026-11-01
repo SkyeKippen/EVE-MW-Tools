@@ -17,6 +17,7 @@
 \ir generate_mining_ledger_table.sql
 \ir generate_corp_mining_ledger_table.sql
 \ir generate_jita_sell_prices_table.sql
+\ir generate_market_history_tables.sql
 \ir generate_places_table.sql
 \ir generate_stockpiles_tables.sql
 \ir generate_shopping_lists_table.sql
